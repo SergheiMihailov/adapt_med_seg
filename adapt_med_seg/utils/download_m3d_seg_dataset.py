@@ -11,11 +11,6 @@ def download_m3d_seg_dataset(padded_dataset_number: str) -> None:
     local_filename = padded_dataset_number
     save_path = os.path.join(DATASETS_DIR, f"{local_filename}.zip")
 
-    if os.path.exists(save_path) or os.path.exists(
-        os.path.join(DATASETS_DIR, local_filename)
-    ):
-        print(f"File already exists as {local_filename}")
-        return
     download_file(url, save_path)
     unzip_file(save_path)
     # Delete zip file after unzipping

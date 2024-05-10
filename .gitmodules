@@ -1,0 +1,3 @@
+[submodule "SegVol"]
+	path = SegVol
+	url = https://huggingface.co/BAAI/SegVol

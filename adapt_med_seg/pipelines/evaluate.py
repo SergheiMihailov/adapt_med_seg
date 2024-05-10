@@ -128,7 +128,7 @@ class EvaluatePipeline:
             # labels.append(gt_npy)
             labels.append(data_item["label"][0][cls_idx])
 
-            avg_dice_score.update(dice_score(preds[-1], labels[-1]))
+            avg_dice_score.update(dice_score(preds[-1].to(self._model.device), labels[-1].to(self._model.device)))
 
         results = {"dice": avg_dice_score.avg}
 
