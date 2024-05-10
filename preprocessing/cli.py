@@ -3,7 +3,7 @@ import argparse
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--classes',
-                        help='List of classes to segment. This can be overridden by the metadata',
+                        help='List of classes to segment. This will be matched against the labels in the metadata (if exist), so that we can ensure that the right classes are assigned the right labels.',
                         type=list,
                         default=['liver', 'right kidney', 'spleen', 'pancreas', 'aorta', 'inferior vena cava', 'right adrenal gland', 'left adrenal gland', 'gallbladder', 'esophagus', 'stomach', 'duodenum', 'left kidney'],
                         action='store')

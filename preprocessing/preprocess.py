@@ -108,9 +108,9 @@ def run():
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
     # required_class_id is the index of the list of categories in the arguments
     # configured_class_id is the index of the class in the dataset
-    label_map = {idx+1: -1 for idx in range(len(args.category))}
+    label_map = {idx+1: -1 for idx in range(len(args.classes))}
     label_map[0] = 0 # background class
-    for idx, label in enumerate(args.category):
+    for idx, label in enumerate(args.classes):
         # find the corresponding class in the dataset
         dataset_class_id = -1
         for dataset_cls_id, dataset_class in enumerate(classes):
