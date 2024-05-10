@@ -80,7 +80,6 @@ def preprocess_image(info):
             gt_masks.append(gt_mask)
             continue
         gt_mask[label_ndarray == dataset_id] = 1
-        gt_mask[label_ndarray != dataset_id] = 1
         gt_masks.append(gt_mask)
     gt_masks = np.stack(gt_masks).astype(np.int32)
 
