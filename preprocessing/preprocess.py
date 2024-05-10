@@ -11,7 +11,8 @@ from monai.transforms import (
 )
 
 from cli import parse_arguments
-from splits import get_data_splits, SPLIT_NAMES, MODALITY_MAPPING
+from splits import (SPLIT_NAMES, MODALITY_MAPPING,
+                    parse_amos, parse_chaos)
 from process_modality import process_ct_image, process_mr_image
 
 # image loader that we use for loading the images
@@ -24,39 +25,16 @@ img_loader = Compose(
     ]
 )
 
-def get_data_paths(image_dir, labels_dir):
-    """
-        Extract the paths of the images and labels and 
-        return a list of 4 tuples containing the 
-            index,
-            name,
-            image path and
-            label path
-    """
-    image_list_all = [item for item in sorted(os.listdir(image_dir))]
-    label_list_all = [item for item in sorted(os.listdir(labels_dir))]
-    assert len(image_list_all) == len(label_list_all)
-    print('dataset size ', len(image_list_all))
-
-    data_path_list_all = []
-    for idx in range(len(image_list_all)):
-        image_path = os.path.join(image_dir, image_list_all[idx])
-        label_path = os.path.join(labels_dir, label_list_all[idx])
-        name = image_list_all[idx].split('.')[0]
-        info = (idx, name, image_path, label_path)
-        data_path_list_all.append(info)
-    return data_path_list_all
-
 def preprocess_image(info):
     """
         Load the image and label and save them to the save_path
     """
-    _, name, image_path, label_path, modality, label_map, save_path = info
+    name, image_path, label_path, modality, label_map, save_path = info
     # check if the case already exists
     case_path = os.path.join(save_path, name)
     os.makedirs(case_path, exist_ok=True)
     if os.path.exists(os.path.join(case_path, 'image.npy')):
-        print(f'Case {name} already exists')
+        print(f'{name} already exists, skipping')
         return
 
     # load the image and label
@@ -96,14 +74,18 @@ def run():
     # SEED
     np.random.seed(args.seed)
 
-    data_path_list_all = get_data_paths(args.image_dir, args.label_dir)
     # path to save stuff
     save_path = os.path.join(args.save_root, args.dataset_code)
     os.makedirs(save_path, exist_ok=True)
     # list of files that already exist
     existing_files = os.listdir(save_path)
     # split the data into training, validation and testing
-    data_splits, modality_info, classes = get_data_splits(data_path_list_all, args.test_ratio)
+    if args.dataset_type == 'amos':
+        data_splits, modality_info, classes = parse_amos(args.dataset_root)
+    elif args.dataset_type == 'chaos':
+        data_splits, modality_info, classes = parse_chaos(args.dataset_root)
+    else:
+        raise ValueError(f'Unknown dataset code: {args.dataset_type}')
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
     # required_class_id is the index of the list of categories in the arguments
     # configured_class_id is the index of the class in the dataset
@@ -119,15 +101,15 @@ def run():
         label_map[idx+1] = dataset_class_id
 
     # prepare the data for multiprocessing
-    # create a list of (split, image_path, label_path, modality) tuples
+    # create a list of (image_name, image_path, label_path, modality) tuples
     linear_data = []
     for split in SPLIT_NAMES:
         for info, modality in zip(data_splits[split], modality_info[split]):
-            linear_data.append((split, *info, modality))
+            linear_data.append((*info, modality))
     # create a pool of workers
     with multiprocessing.Pool(args.num_workers) as pool:
         # load the images and labels
-        pool.map(preprocess_image, (*linear_data, label_map, save_path))
+        pool.map(preprocess_image, (*linear_data, label_map, save_path, existing_files))
     # save JSON metadata
     output_meta = {
         'name': args.dataset_type or args.dataset_code,
@@ -142,23 +124,24 @@ def run():
         'numTraining': len(data_splits['train']),
         'numValidation': len(data_splits['val']),
         'numTest': len(data_splits['test']),
-        'training': [{'image': f'{info[1]}/image.npy',
-                      'label': f'{info[1]}/label.npz',
+        'training': [{'image': f'{info[0]}/image.npy',
+                      'label': f'{info[0]}/label.npz',
                       'modality': modality}
                      for info, modality in zip(data_splits['train'], modality_info['train'])],
-        'validation': [{'image': f'{info[1]}/image.npy',
-                        'label': f'{info[1]}/label.npz', 
+        'validation': [{'image': f'{info[0]}/image.npy',
+                        'label': f'{info[0]}/label.npz', 
                         'modality': modality}
                        for info, modality in zip(data_splits['val'], modality_info['val'])],
-        'test': [{'image': f'{info[1]}/image.npy',
-                  'label': f'{info[1]}/label.npz',
+        'test': [{'image': f'{info[0]}/image.npy',
+                  'label': f'{info[0]}/label.npz',
                   'modality': modality}
                  for info, modality in zip(data_splits['test'], modality_info['test'])],
     }
     # save the metadata
     with open(os.path.join(save_path, f'dataset.json'), 'w') as f:
         json.dump(output_meta, f, indent=2)
-
+    print(f'dataset.json saved at ', save_path)
+    print('Done!')
 
 if __name__ == '__main__':
     run()
