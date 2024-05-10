@@ -217,27 +217,33 @@ def parse_chaos(data_root: str) -> Tuple[Dict[str, List[Tuple[int,str,str,str]]]
         # image
         image_path_spir = os.path.join(mr_data_root, idx, 'T2SPIR', 'DICOM_anon')
         image_array_spir, image_path_spir = stack_dicom_slices(image_path_spir)
-        # append
-        splits_list.append((f'mr_{idx}_in', image_path_in, label_path_dual))
-        splits_list.append((f'mr_{idx}_out', image_path_out, label_path_dual))
-        splits_list.append((f'mr_{idx}_spir', image_path_spir, label_path_spir))
-        mod_list.append('1'); mod_list.append('1'); mod_list.append('1')
+        # append, while keeping the in and out phase images together.
+        # they come from the same patient so its not good to have them in different splits
+        splits_list.append(((f'mr_{idx}_in', image_path_in, label_path_dual),
+                            (f'mr_{idx}_out', image_path_out, label_path_dual),
+                            (f'mr_{idx}_spir', image_path_spir, label_path_spir)))
+        mod_list.append(('1', '1', '1'))
     # create test split
     test_idx = np.random.choice(len(splits_list), int(0.2*len(splits_list)), replace=False)
     test_idx = set(test_idx)
-    data_splits['test'].extend([splits_list[idx] for idx in test_idx])
-    modality_info['test'].extend([mod_list[idx] for idx in test_idx])
+    data_splits['test'].extend(
+        [split for idx in test_idx for split in splits_list[idx]])
+    modality_info['test'].extend([mod for idx in test_idx for mod in mod_list[idx]])
     # remove the test splits
     rest_idx = set(range(len(splits_list))) - test_idx
     # create val split
     val_idx = np.random.choice(list(rest_idx), int(0.2*len(splits_list)), replace=False)
     val_idx = set(val_idx)
-    data_splits['val'].extend([splits_list[idx] for idx in val_idx])
-    modality_info['val'].extend([mod_list[idx] for idx in val_idx])
+    data_splits['val'].extend(
+        [split for idx in val_idx for split in splits_list[idx]])
+    modality_info['val'].extend(
+        [mod for idx in val_idx for mod in mod_list[idx]])
     # create train split
     train_idx = rest_idx - val_idx
-    data_splits['train'].extend([splits_list[idx] for idx in train_idx])
-    modality_info['train'].extend([mod_list[idx] for idx in train_idx])
+    data_splits['train'].extend(
+        [split for idx in train_idx for split in splits_list[idx]])
+    modality_info['train'].extend(
+        [mod for idx in train_idx for mod in mod_list[idx]])
     # sanity check
     assert len(data_splits['train']) + len(data_splits['val']) + len(data_splits['test']) == len(splits_list),\
         'splits do not add up'
