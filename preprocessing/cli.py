@@ -36,6 +36,11 @@ def parse_arguments():
                         type=int,
                         default=1,
                         action='store')
+    parser.add_argument('--seed',
+                        help='Random seed, for reproducibility in case any random shuffling is performed',
+                        type=int,
+                        default=42,
+                        action='store')
     random_splits_parser = parser.add_argument_group('random_splits',
                                                     description='Randomly split the dataset into training and testing sets')
     random_splits_parser.add_argument('--test_ratio',

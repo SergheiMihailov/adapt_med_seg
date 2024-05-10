@@ -93,6 +93,10 @@ def preprocess_image(info):
 
 def run():
     args = parse_arguments()
+
+    # SEED
+    np.random.seed(args.seed)
+
     data_path_list_all = get_data_paths(args.image_dir, args.label_dir)
     # path to save stuff
     save_path = os.path.join(args.save_root, args.dataset_code)
