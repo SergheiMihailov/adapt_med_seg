@@ -1,0 +1,29 @@
+[tool.poetry]
+authors = ["Group 33"]
+description = ""
+name = "adapt-med-seg"
+readme = "README.md"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+python = ">=3.10, <3.11"
+torch = "^2.3.0"
+torchvision = "^0.18.0"
+peft = "^0.10.0"
+requests = "^2.31.0"
+einops = "0.6.1"
+matplotlib = "^3.8.4"
+monai = "0.9.0"
+scipy = "^1.13.0"
+nibabel = "^5.2.1"
+transformers = "^4.40.2"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.4"
+wandb = "^0.17.0"
+notebook = "^7.1.3"
+typing-extensions = "^4.11.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
