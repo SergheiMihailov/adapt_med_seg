@@ -87,7 +87,7 @@ class EvaluatePipeline:
             desc=f"Evaluating {self._dataset.name}",
             unit="batch",
         ):
-            data_item, gt_npy = batch
+            data_item, gt_npy, modality = batch
             data_item = data_item_to_device(data_item, self._model.device)
 
             cls_idx = self._cls_idx
