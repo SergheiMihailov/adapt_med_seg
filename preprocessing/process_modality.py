@@ -18,9 +18,9 @@ def process_ct_image(image_ndarray):
     mean = np.mean(voxel_filtered)
     std = np.std(voxel_filtered)
     ### transform ###
-    ct_narray = np.clip(ct_narray, lower_bound, upper_bound)
-    ct_narray = (ct_narray - mean) / max(std, 1e-8)
-    return ct_narray
+    image_ndarray = np.clip(image_ndarray, lower_bound, upper_bound)
+    image_ndarray = (image_ndarray - mean) / max(std, 1e-8)
+    return image_ndarray
 
 def process_mr_image(image_ndarray):
     """
@@ -28,4 +28,4 @@ def process_mr_image(image_ndarray):
     """
     # for now this is the same as the CT image
     # TODO: implement a more sophisticated preprocessing method
-    process_ct_image(image_ndarray)
+    return process_ct_image(image_ndarray)

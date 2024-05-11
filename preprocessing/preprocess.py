@@ -29,7 +29,7 @@ def preprocess_image(info):
     """
         Load the image and label and save them to the save_path
     """
-    name, image_path, label_path, modality, label_map, save_path = info
+    name, img_loader, label_loader, modality, label_map, save_path = info
     # check if the case already exists
     case_path = os.path.join(save_path, name)
     os.makedirs(case_path, exist_ok=True)
@@ -38,9 +38,8 @@ def preprocess_image(info):
         return
 
     # load the image and label
-    data = img_loader({'image': image_path, 'label': label_path})
-    image_ndarray = data['image']
-    label_ndarray = data['label']
+    image_ndarray = img_loader() # prepared in splits.py
+    label_ndarray = label_loader() # prepared in splits.py
     # normalize (and transform) the image
     if MODALITY_MAPPING[modality] == 'CT':
         image_ndarray = process_ct_image(image_ndarray)
@@ -54,10 +53,10 @@ def preprocess_image(info):
     for requested_id, dataset_id in label_map.items():
         gt_mask = np.zeros_like(label_ndarray)
         if dataset_id == -1:
-            print(f'Class {requested_id} not found in the dataset')
+            print(f'{name} zero class ==> {requested_id}')
             gt_masks.append(gt_mask)
             continue
-        gt_mask[label_ndarray == dataset_id] = 1
+        gt_mask[label_ndarray == int(dataset_id)] = 1
         gt_masks.append(gt_mask)
     gt_masks = np.stack(gt_masks).astype(np.int32)
 
@@ -80,10 +79,12 @@ def run():
     # list of files that already exist
     existing_files = os.listdir(save_path)
     # split the data into training, validation and testing
-    if args.dataset_type == 'amos':
+    if args.dataset_type == 'AMOS':
         data_splits, modality_info, classes = parse_amos(args.dataset_root)
-    elif args.dataset_type == 'chaos':
-        data_splits, modality_info, classes = parse_chaos(args.dataset_root)
+    elif args.dataset_type == 'CHAOS':
+        data_splits, modality_info, classes = parse_chaos(args.dataset_root,
+                                                          args.test_ratio,
+                                                          args.val_ratio)
     else:
         raise ValueError(f'Unknown dataset code: {args.dataset_type}')
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
@@ -94,8 +95,8 @@ def run():
     for idx, label in enumerate(args.classes):
         # find the corresponding class in the dataset
         dataset_class_id = -1
-        for dataset_cls_id, dataset_class in enumerate(classes):
-            if dataset_class == label:
+        for dataset_cls_id, dataset_class in classes.items():
+            if dataset_class.lower() == label.lower():
                 dataset_class_id = dataset_cls_id
                 break
         label_map[idx+1] = dataset_class_id
@@ -105,11 +106,13 @@ def run():
     linear_data = []
     for split in SPLIT_NAMES:
         for info, modality in zip(data_splits[split], modality_info[split]):
-            linear_data.append((*info, modality))
+            linear_data.append((*info, modality, label_map, save_path))
     # create a pool of workers
-    with multiprocessing.Pool(args.num_workers) as pool:
-        # load the images and labels
-        pool.map(preprocess_image, (*linear_data, label_map, save_path, existing_files))
+    for data in linear_data:
+        preprocess_image(data)
+    # with multiprocessing.Pool(args.num_workers) as pool:
+    #     # load the images and labels
+    #     pool.map(preprocess_image, linear_data)
     # save JSON metadata
     output_meta = {
         'name': args.dataset_type or args.dataset_code,
@@ -120,7 +123,7 @@ def run():
         'release': 'N/A',
         'tensorImageSize': '4D',
         'modality': MODALITY_MAPPING.get(args.dataset_type, {'0': args.modality}),
-        'labels': {str(idx): label for idx, label in enumerate(args.category)},
+        'labels': {str(idx): label for idx, label in enumerate(args.classes)},
         'numTraining': len(data_splits['train']),
         'numValidation': len(data_splits['val']),
         'numTest': len(data_splits['test']),

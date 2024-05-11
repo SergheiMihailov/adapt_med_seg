@@ -5,16 +5,8 @@ def parse_arguments():
     parser.add_argument('--classes',
                         help='List of classes to segment. This will be matched against the labels in the metadata (if exist), so that we can ensure that the right classes are assigned the right labels.',
                         type=list,
+                        nargs='+',
                         default=['liver', 'right kidney', 'spleen', 'pancreas', 'aorta', 'inferior vena cava', 'right adrenal gland', 'left adrenal gland', 'gallbladder', 'esophagus', 'stomach', 'duodenum', 'left kidney'],
-                        action='store')
-    parser.add_argument('--image_dir',
-                        type=str,
-                        required=True,
-                        action='store')
-    parser.add_argument('--label_dir',
-                        help='Path to the directory containing the labels',
-                        type=str,
-                        required=True,
                         action='store')
     parser.add_argument('--dataset_root',
                         help='Root directory of the dataset',
@@ -74,8 +66,9 @@ def parse_arguments():
                         choices=['AMOS', 'CHAOS'])
 
     args = parser.parse_args()
-    if args.test_ratio is not None and args.metadata_path is not None:
-        raise ValueError('Cannot provide both test_ratio and metadata_path')
-    if args.test_ratio is None and args.metadata_path is None:
-        raise ValueError('Must provide either test_ratio or metadata_path')
+    # concatenate the classes, if they are parsed as a list of characters
+    for idx, c in enumerate(args.classes):
+        if isinstance(c, list):
+            args.classes[idx] = ''.join(c)
+
     return args
