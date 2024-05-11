@@ -122,7 +122,7 @@ def run():
         'licence': 'N/A',
         'release': 'N/A',
         'tensorImageSize': '4D',
-        'modality': MODALITY_MAPPING.get(args.dataset_type, {'0': args.modality}),
+        'modality': MODALITY_MAPPING,
         'labels': {str(idx): label for idx, label in enumerate(args.classes)},
         'numTraining': len(data_splits['train']),
         'numValidation': len(data_splits['val']),
