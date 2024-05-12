@@ -27,8 +27,8 @@ class SegVolBase(SegVolModel):
     def eval(self) -> Self:
         self.model.eval()
 
-    def train(self) -> Self:
-        self.model.train()
+    def train(self, mode = True) -> Self:
+        self.model.train(mode)
 
     def to_cpu(self) -> Self:
         self.model.to("cpu")
