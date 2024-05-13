@@ -7,6 +7,7 @@ from monai.transforms import (
     Compose,
     ToNumpy
 )
+from monai.transforms.spatial.functional import flip
 import numpy as np
 import json
 import csv
@@ -36,7 +37,7 @@ class load_callback:
     def __call__(self):
         return self.loader(*self.args, **self.kwargs)
 
-img_loader_def = Compose(
+img_loader_amos = Compose(
     [
         LoadImage(),
         EnsureChannelFirst(channel_dim="no_channel"),
@@ -59,11 +60,24 @@ chaos_classes = {
 }
 # represent the intervals
 chaos_cls_intervals = {
-    '1': (55, 70),
-    '2': (110, 135),
-    '3': (175, 200),
-    '4': (240, 255)
+    '1': (55/255, 70/255),
+    '2': (110/255, 135/255),
+    '3': (175/255, 200/255),
+    '4': (240/255, 255/255)
     }
+
+def chaos_image_loader(path):
+    img_loader = Compose(
+        [
+            LoadImage(),
+            EnsureChannelFirst(channel_dim="no_channel"),
+            ToNumpy()
+        ]
+    )
+    img = img_loader(path)
+    # transpose along the 2nd and 3rd axis
+    img = np.transpose(img, (0, 2, 1, 3))
+    return img
 
 def chaos_label_loader(path, is_ct: bool):
     """
@@ -137,8 +151,8 @@ def parse_amos(data_root: str) -> Tuple[Dict[str, List[Tuple[str,Callable]]],
             img_id = img.split('.')[0][len(prefix):]
             modality = AMOS_MACHINE_TO_MODALITY[metadata[img_id]['Manufacturer\'s Model Name']]
             data_splits[split].append((str(img_id),
-                                       load_callback(img_loader_def, os.path.join(images_dir, img)),
-                                       load_callback(img_loader_def, os.path.join(labels_dir, lab))))
+                                       load_callback(img_loader_amos, os.path.join(images_dir, img)),
+                                       load_callback(img_loader_amos, os.path.join(labels_dir, lab))))
             modality_info[split].append(modality)
     # check that the lengths are correct
     assert (len(data_splits['train']) == dataset_json['numTraining']),\
@@ -183,7 +197,7 @@ def parse_chaos(data_root: str,
         image_path = os.path.join(ct_data_root, idx, 'DICOM_anon')
         label_path = os.path.join(ct_data_root, idx, 'Ground')
         # construct loaders
-        image_load = load_callback(img_loader_def, image_path)
+        image_load = load_callback(chaos_image_loader, image_path)
         label_load = load_callback(chaos_label_loader,
                                    **{'path': label_path, 'is_ct': True})
         # append to the splits
@@ -221,11 +235,11 @@ def parse_chaos(data_root: str,
         # InPhase
         image_path_in = os.path.join(
             mr_data_root, idx, 'T1DUAL', 'DICOM_anon', 'InPhase')
-        image_loader_in = load_callback(img_loader_def, image_path_in)
+        image_loader_in = load_callback(chaos_image_loader, image_path_in)
         # OutPhase
         image_path_out = os.path.join(
             mr_data_root, idx, 'T1DUAL', 'DICOM_anon', 'OutPhase')
-        image_loader_out = load_callback(img_loader_def, image_path_out)
+        image_loader_out = load_callback(chaos_image_loader, image_path_out)
 
         # T2SPIR subdirectory has a single mask
         # mask first
@@ -234,7 +248,7 @@ def parse_chaos(data_root: str,
                                           **{'path': label_path_spir, 'is_ct': False})
         # image
         image_path_spir = os.path.join(mr_data_root, idx, 'T2SPIR', 'DICOM_anon')
-        image_loader_spir = load_callback(img_loader_def, image_path_spir)
+        image_loader_spir = load_callback(chaos_image_loader, image_path_spir)
         # append, while keeping the in and out phase images together.
         # they come from the same patient so its not good to have them in different splits
         splits_list.append(((f'mr_{idx}_in', image_loader_in, label_loader_dual),
