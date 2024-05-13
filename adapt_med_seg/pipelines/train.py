@@ -205,7 +205,7 @@ class SegVolLightning(pl.LightningModule):
         self._cls_idx = cls_idx
 
     def training_step(self, batch, batch_idx):
-        data_item, gt_npy = batch
+        data_item, gt_npy, modality = batch
         data_item["image"] = data_item["image"].to(self.device)
 
         # this is a mask ground truth
@@ -232,7 +232,7 @@ class SegVolLightning(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        data_item, gt_npy = batch
+        data_item, gt_npy, modality = batch
         data_item = data_item_to_device(data_item, self.device)
 
         # text prompt

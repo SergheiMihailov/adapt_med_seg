@@ -11,7 +11,7 @@ dataset_numbers = [0]
 for model_name in model_names:
     for dataset_number in dataset_numbers:
         training_args = TrainingArgs(
-            dataset_number=dataset_number,
+            dataset_number="datasets/chaos000",
             model_name=model_name,
             cls_idx=0,
             device="cpu",
@@ -21,16 +21,15 @@ for model_name in model_names:
         train_pipeline = SegVolLightning(model_name)
 
         _dataset = MedSegDataset(
-            dataset_number=dataset_number,
             processor=train_pipeline._model.processor,
+            dataset_path="datasets/chaos000",
+            modalities=["CT"],
             train=True,
         )
 
         train_pipeline.set_dataset(_dataset)
-        train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(
-            1 / 9, 1, 42
-        )
-        
+        train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
+
         trainer = Trainer(
             max_epochs=10,
             accelerator=training_args.device,
