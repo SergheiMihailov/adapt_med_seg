@@ -141,7 +141,9 @@ def compare_ours_theirs(data_index, data_path, prefix, m3d_path):
     ax[0, 2].set_title('Difference')
     im00 = ax[0, 0].imshow(my_image[0, :, :, slice_index].squeeze(), cmap='gray')
     im01 = ax[0, 1].imshow(their_image[0, :, :, slice_index].squeeze(), cmap='gray')
-    im02 = ax[0, 2].imshow(diff_image[0, :, :, slice_index].squeeze(), cmap='gray')
+    im02 = ax[0, 2].imshow(diff_image[0, :, :, slice_index].squeeze(), cmap='gray',
+                           vmin=min(np.min(my_image), np.min(their_image)),
+                           vmax=max(np.max(my_image), np.max(their_image)))
     im10 = ax[1, 0].imshow(
         my_mask[0, :, :, slice_index].squeeze(), cmap='gray', vmin=0, vmax=1)
     im11 = ax[1, 1].imshow(
