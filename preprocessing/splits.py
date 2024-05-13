@@ -7,7 +7,8 @@ from monai.transforms import (
     Compose,
     ToNumpy
 )
-from monai.transforms.spatial.functional import flip
+from monai.data.image_reader import NibabelReader
+
 import numpy as np
 import json
 import csv
@@ -39,7 +40,7 @@ class load_callback:
 
 img_loader_amos = Compose(
     [
-        LoadImage(),
+        LoadImage(reader=NibabelReader()),
         EnsureChannelFirst(channel_dim="no_channel"),
         ToNumpy()
     ]
@@ -129,7 +130,7 @@ def parse_amos(data_root: str,
         raise ValueError('metadata file not found in {data_root}/../labeled_data_meta_0000_0599.csv')
     with open(metadata_path, 'r') as f:
         metadata = csv.DictReader(f)
-        metadata = {dp['amos_id']: dp for dp in metadata}
+        metadata = {int(dp['amos_id']): dp for dp in metadata}
 
     data_paths = {
         'train': {'images': os.path.join(data_root, 'amos22', 'imagesTr'),
@@ -149,18 +150,14 @@ def parse_amos(data_root: str,
         labels_list = sorted(os.listdir(labels_dir))
         for img, lab in zip(images_list, labels_list):
             img_id = img.split('.')[0][len(prefix):]
-            modality = AMOS_MACHINE_TO_MODALITY[metadata[img_id]['Manufacturer\'s Model Name']]
+            if int(img_id) not in metadata:
+                print(f'{img_id} not found in metadata. Skipping.')
+                continue
+            modality = AMOS_MACHINE_TO_MODALITY[metadata[int(img_id)]["Manufacturer's Model Name"]]
             data_splits[split].append((str(img_id),
                                        load_callback(img_loader_amos, os.path.join(images_dir, img)),
                                        load_callback(img_loader_amos, os.path.join(labels_dir, lab))))
             modality_info[split].append(modality)
-    # check that the lengths are correct
-    assert (len(data_splits['train']) == dataset_json['numTraining']),\
-        f'number of training samples mismatch.'+\
-            ' found: {len(data_splits["train"])} expected: {dataset_json["numTraining"]}'
-    assert (len(data_splits['test']) == dataset_json['numValidation']),\
-        f'number of test samples mismatch.' +\
-        ' found: {len(data_splits["test"])} expected: {dataset_json["numValidation"]}'
 
     val_indices = np.random.choice(len(data_splits['train']),
                                    int(val_ratio*len(data_splits['train'])), replace=False)

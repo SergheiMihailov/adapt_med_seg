@@ -6,7 +6,7 @@ def parse_arguments():
                         help='List of classes to segment. This will be matched against the labels in the metadata (if exist), so that we can ensure that the right classes are assigned the right labels.',
                         type=list,
                         nargs='+',
-                        default=['liver', 'right kidney', 'spleen', 'pancreas', 'aorta', 'inferior vena cava', 'right adrenal gland', 'left adrenal gland', 'gallbladder', 'esophagus', 'stomach', 'duodenum', 'left kidney'],
+                        default=['liver', 'right kidney', 'spleen', 'left kidney'],
                         action='store')
     parser.add_argument('--dataset_root',
                         help='Root directory of the dataset',
