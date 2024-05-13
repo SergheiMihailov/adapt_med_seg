@@ -85,7 +85,7 @@ def run(args: Namespace):
     existing_files = os.listdir(save_path)
     # split the data into training, validation and testing
     if args.dataset_type == 'AMOS':
-        data_splits, modality_info, classes = parse_amos(args.dataset_root)
+        data_splits, modality_info, classes = parse_amos(args.dataset_root, args.val_ratio)
     elif args.dataset_type == 'CHAOS':
         data_splits, modality_info, classes = parse_chaos(args.dataset_root,
                                                           args.test_ratio,

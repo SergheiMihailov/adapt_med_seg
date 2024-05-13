@@ -102,7 +102,8 @@ def chaos_label_loader(path, is_ct: bool):
     return ToNumpy()(EnsureChannelFirst(channel_dim="no_channel")(label_array))
 
 
-def parse_amos(data_root: str) -> Tuple[Dict[str, List[Tuple[str,Callable]]],
+def parse_amos(data_root: str,
+               val_ratio: float) -> Tuple[Dict[str, List[Tuple[str,Callable]]],
                                         Dict[str, List[str]],
                                         List[str]]:
     """
@@ -133,16 +134,15 @@ def parse_amos(data_root: str) -> Tuple[Dict[str, List[Tuple[str,Callable]]],
     data_paths = {
         'train': {'images': os.path.join(data_root, 'amos22', 'imagesTr'),
                   'labels': os.path.join(data_root, 'amos22', 'labelsTr')},
-        'val': {'images': os.path.join(data_root, 'amos22', 'imagesVa'),
+        'test': {'images': os.path.join(data_root, 'amos22', 'imagesVa'),
                 'labels': os.path.join(data_root, 'amos22', 'labelsVa')},
-        'test': {'images': os.path.join(data_root, 'amos22', 'imagesTs'),
-                    'labels': os.path.join(data_root, 'amos22', 'labelsTs')}
+        # test data has no masks
     }
 
     # create splits dictionary
     data_splits = {key: [] for key in SPLIT_NAMES}
     modality_info = {key: [] for key in SPLIT_NAMES}
-    for split in SPLIT_NAMES:
+    for split in ['train', 'test']:
         images_dir = data_paths[split]['images']
         labels_dir = data_paths[split]['labels']
         images_list = sorted(os.listdir(images_dir))
@@ -158,15 +158,30 @@ def parse_amos(data_root: str) -> Tuple[Dict[str, List[Tuple[str,Callable]]],
     assert (len(data_splits['train']) == dataset_json['numTraining']),\
         f'number of training samples mismatch.'+\
             ' found: {len(data_splits["train"])} expected: {dataset_json["numTraining"]}'
-    assert (len(data_splits['val']) == dataset_json['numValidation']),\
-        f'number of validation samples mismatch.' +\
-        ' found: {len(data_splits["val"])} expected: {dataset_json["numValidation"]}'
-    assert (len(data_splits['test']) == dataset_json['numTest']),\
+    assert (len(data_splits['test']) == dataset_json['numValidation']),\
         f'number of test samples mismatch.' +\
-        ' found: {len(data_splits["test"])} expected: {dataset_json["numTest"]}'
+        ' found: {len(data_splits["test"])} expected: {dataset_json["numValidation"]}'
+
+    val_indices = np.random.choice(len(data_splits['train']),
+                                   int(val_ratio*len(data_splits['train'])), replace=False)
+    val_indices = set(val_indices)
+    data_splits['val'] = [data_splits['train'][idx] for idx in val_indices]
+    modality_info['val'] = [modality_info['train'][idx] for idx in val_indices]
+    # remove the validation samples from the training set
+    train_indices = set(range(len(data_splits['train'])))-val_indices
+    data_splits['train'] = [data_splits['train'][idx]
+                            for idx in train_indices]
+    modality_info['train'] = [modality_info['train'][idx]
+                              for idx in train_indices]
+
+    print('train:', len(data_splits['train']),
+          'val:', len(data_splits['val']),
+          'test:', len(data_splits['test']))
 
     # obtain list of labels and corr. classes
     classes = dataset_json['labels']
+    if '0' in classes: 
+        classes.pop('0')
 
     return data_splits, modality_info, classes
 
