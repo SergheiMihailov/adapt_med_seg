@@ -5,13 +5,13 @@ from pytorch_lightning import Trainer, seed_everything
 
 seed_everything(42)
 
-model_names = ["segvol_baseline"]
-dataset_numbers = [0]
+model_names = ["segvol_lora"]
+dataset_paths = ["datasets/chaos000"]
 
 for model_name in model_names:
-    for dataset_number in dataset_numbers:
+    for dataset in dataset_paths:
         training_args = TrainingArgs(
-            dataset_number="datasets/chaos000",
+            dataset_number=dataset,
             model_name=model_name,
             cls_idx=0,
             device="cpu",
@@ -22,7 +22,7 @@ for model_name in model_names:
 
         _dataset = MedSegDataset(
             processor=train_pipeline._model.processor,
-            dataset_path="datasets/chaos000",
+            dataset_path=dataset,
             modalities=["CT"],
             train=True,
         )
