@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 from typing import Any
 
@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 class EvaluateArgs:
     use_wandb: bool = False
     model_name: str = "segvol_baseline"
-    dataset_number: int = 0
+    dataset_path: str = None
+    modalities: str = field(default_factory=lambda: ["CT"])
     device: str = "cuda"
     batch_size: int = 1
     cls_idx: int = 0
@@ -44,20 +45,23 @@ class EvaluatePipeline:
         )
 
         self._dataset = MedSegDataset(
-            dataset_number=evaluate_args.dataset_number,
+            dataset_path=evaluate_args.dataset_path,
             processor=self._model.processor,
+            modalities=evaluate_args.modalities,
             train=False,
         )
 
         self.model_name = evaluate_args.model_name
-        self.dataset_number = evaluate_args.dataset_number
+        self.modalities = evaluate_args.modalities
+        self.dataset_id = self._dataset.dataset_number
 
         self._cls_idx = evaluate_args.cls_idx
         self._batch_size = evaluate_args.batch_size
         self._use_wandb = evaluate_args.use_wandb
 
     def run(self) -> dict[str, dict[str, Any]]:
-        test_loader = self._dataset.get_test_dataloader(batch_size=self._batch_size)
+        test_loader = self._dataset.get_test_dataloader(
+            batch_size=self._batch_size)
 
         preds, labels = [], []
 
@@ -65,17 +69,18 @@ class EvaluatePipeline:
 
         avg_dice_score = AverageMeter()
 
-        logger.info("Evaluating %s on dataset %s", self.model_name, self.dataset_number)
+        logger.info("Evaluating %s on dataset %s",
+                    self.model_name, self.dataset_id)
 
         if self._use_wandb:
 
             wandb.init(
                 project="dl2_g33",
-                name=f"Evaluation_{self.model_name}_on_{self.dataset_number}",
+                name=f"Evaluation_{self.model_name}_on_{self.dataset_id}",
             )
             wandb.config.update(
                 {
-                    "dataset": self.dataset_number,
+                    "dataset": self.dataset_id,
                     "model": self.model_name,
                     "cls_idx": self._cls_idx,
                     "batch_size": self._batch_size,
@@ -128,7 +133,8 @@ class EvaluatePipeline:
             # labels.append(gt_npy)
             labels.append(data_item["label"][0][cls_idx])
 
-            avg_dice_score.update(dice_score(preds[-1].to(self._model.device), labels[-1].to(self._model.device)))
+            avg_dice_score.update(dice_score(
+                preds[-1].to(self._model.device), labels[-1].to(self._model.device)))
 
         results = {"dice": avg_dice_score.avg}
 

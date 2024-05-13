@@ -3,12 +3,14 @@ import scipy.sparse as sp
 import os
 import json
 import multiprocessing
+from argparse import Namespace
 from monai.transforms import (
     EnsureChannelFirstd,
     Compose,
     LoadImaged,
     Orientationd,
 )
+from glob import glob
 
 from cli import parse_arguments
 from splits import (SPLIT_NAMES, MODALITY_MAPPING,
@@ -33,7 +35,8 @@ def preprocess_image(info):
     # check if the case already exists
     case_path = os.path.join(save_path, name)
     os.makedirs(case_path, exist_ok=True)
-    if os.path.exists(os.path.join(case_path, 'image.npy')):
+    if os.path.exists(os.path.join(case_path, 'image.npy'))\
+        and len(glob(os.path.join(case_path, 'mask_*.npz'))) > 0:
         print(f'{name} already exists, skipping')
         return
 
@@ -49,26 +52,28 @@ def preprocess_image(info):
         raise ValueError(f'Unknown modality: {modality}')
     # split the labels into separate classes and stack them
     label_ndarray = np.array(label_ndarray).squeeze()
+    # print(f'{name} loaded, image shape: {image_ndarray.shape}, label shape: {label_ndarray.shape}')
+    # print(f'{name} label unique values: {np.unique(label_ndarray)}')
+    # print(f'{name} label_map <--> ', label_map)
     gt_masks = []
-    for requested_id, dataset_id in label_map.items():
+    for _, dataset_id in label_map.items():
         gt_mask = np.zeros_like(label_ndarray)
         if dataset_id == -1:
-            print(f'{name} zero class ==> {requested_id}')
             gt_masks.append(gt_mask)
             continue
         gt_mask[label_ndarray == int(dataset_id)] = 1
         gt_masks.append(gt_mask)
     gt_masks = np.stack(gt_masks).astype(np.int32)
+    # print(f'{name} gt_masks shape: {gt_masks.shape}, unique values: {np.unique(gt_masks)}, non-zero: {np.sum(gt_masks, axis=(0))}')
 
     print(name, 'ct gt <--> ', image_ndarray.shape, gt_masks.shape)
     # save the image and label
     np.save(os.path.join(case_path, 'image.npy'), image_ndarray)
     allmatrix_sp = sp.csr_matrix(gt_masks.reshape(gt_masks.shape[0], -1))
-    sp.save_npz(os.path.join(case_path, 'label.npz'), allmatrix_sp)
+    sp.save_npz(os.path.join(case_path, 'mask_' + str(gt_masks.shape)), allmatrix_sp)
     print(f'{name} saved')
 
-def run():
-    args = parse_arguments()
+def run(args: Namespace):
 
     # SEED
     np.random.seed(args.seed)
@@ -80,7 +85,7 @@ def run():
     existing_files = os.listdir(save_path)
     # split the data into training, validation and testing
     if args.dataset_type == 'AMOS':
-        data_splits, modality_info, classes = parse_amos(args.dataset_root)
+        data_splits, modality_info, classes = parse_amos(args.dataset_root, args.val_ratio)
     elif args.dataset_type == 'CHAOS':
         data_splits, modality_info, classes = parse_chaos(args.dataset_root,
                                                           args.test_ratio,
@@ -90,16 +95,18 @@ def run():
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
     # required_class_id is the index of the list of categories in the arguments
     # configured_class_id is the index of the class in the dataset
-    label_map = {idx+1: -1 for idx in range(len(args.classes))}
-    label_map[0] = 0 # background class
+    label_map = {}
+
     for idx, label in enumerate(args.classes):
         # find the corresponding class in the dataset
         dataset_class_id = -1
         for dataset_cls_id, dataset_class in classes.items():
             if dataset_class.lower() == label.lower():
-                dataset_class_id = dataset_cls_id
+                dataset_class_id = int(dataset_cls_id)
                 break
         label_map[idx+1] = dataset_class_id
+    print('requested classes; dataset classes <--> ', args.classes, classes)
+    print('label_map <--> ', label_map)
 
     # prepare the data for multiprocessing
     # create a list of (image_name, image_path, label_path, modality) tuples
@@ -108,11 +115,13 @@ def run():
         for info, modality in zip(data_splits[split], modality_info[split]):
             linear_data.append((*info, modality, label_map, save_path))
     # create a pool of workers
-    for data in linear_data:
-        preprocess_image(data)
-    # with multiprocessing.Pool(args.num_workers) as pool:
-    #     # load the images and labels
-    #     pool.map(preprocess_image, linear_data)
+    if args.num_workers == 1: # for debugging
+        for data in linear_data:
+            preprocess_image(data)
+    else:
+        with multiprocessing.Pool(args.num_workers) as pool:
+            # load the images and labels
+            pool.map(preprocess_image, linear_data)
     # save JSON metadata
     output_meta = {
         'name': args.dataset_type or args.dataset_code,
@@ -123,20 +132,20 @@ def run():
         'release': 'N/A',
         'tensorImageSize': '4D',
         'modality': MODALITY_MAPPING,
-        'labels': {str(idx): label for idx, label in enumerate(args.classes)},
+        'labels': {str(idx): label for idx, label in enumerate(['background', *args.classes])},
         'numTraining': len(data_splits['train']),
         'numValidation': len(data_splits['val']),
         'numTest': len(data_splits['test']),
         'training': [{'image': f'{info[0]}/image.npy',
-                      'label': f'{info[0]}/label.npz',
+                      'label': f'{glob(os.path.join(save_path, info[0], "mask_*.npz"))[0][len(save_path)+1:]}',
                       'modality': modality}
                      for info, modality in zip(data_splits['train'], modality_info['train'])],
         'validation': [{'image': f'{info[0]}/image.npy',
-                        'label': f'{info[0]}/label.npz', 
+                        'label': f'{glob(os.path.join(save_path, info[0], "mask_*.npz"))[0][len(save_path)+1:]}',
                         'modality': modality}
                        for info, modality in zip(data_splits['val'], modality_info['val'])],
         'test': [{'image': f'{info[0]}/image.npy',
-                  'label': f'{info[0]}/label.npz',
+                  'label': f'{glob(os.path.join(save_path, info[0], "mask_*.npz"))[0][len(save_path)+1:]}',
                   'modality': modality}
                  for info, modality in zip(data_splits['test'], modality_info['test'])],
     }
@@ -147,4 +156,5 @@ def run():
     print('Done!')
 
 if __name__ == '__main__':
-    run()
+    args = parse_arguments()
+    run(args)
