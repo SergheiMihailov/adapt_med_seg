@@ -135,7 +135,8 @@ class MedSegDataset(Dataset):
         for split in splits:
             data_idxs[split] = []
             case_paths = dataset_dict[split]
-            for idx, case_ in enumerate(case_paths):
+            idx = 0
+            for case_ in case_paths:
                 if case_["modality"] not in mod_ids:
                     continue
                 self._ct_paths.append(
@@ -144,7 +145,8 @@ class MedSegDataset(Dataset):
                     os.path.join(self.dataset_path, case_["label"]))
                 self._case_modality.append(int(case_["modality"]))
                 data_idxs[split].append(base + idx)
-            base += len(case_paths)
+                idx += 1
+            base += idx
         if self.train:
             # create subsets for each split
             self._tr_val_splits = {split: Subset(self, data_idxs[split])

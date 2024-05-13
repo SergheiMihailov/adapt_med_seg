@@ -273,6 +273,9 @@ class SegVolLightning(pl.LightningModule):
         score = dice_score(preds, labels)
         self.validation_step_outputs.append(score)
         return score
+    
+    def test_step(self, batch, batch_idx):
+        return self.validation_step(batch, batch_idx)
 
     def train(self, mode=True):
         super().train(mode)
