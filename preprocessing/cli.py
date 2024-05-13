@@ -52,7 +52,7 @@ def parse_arguments():
                                       help='Modality of the dataset',
                                       type=str,
                                       required=False,
-                                      default='CT',
+                                      default=None,
                                       action='store')
 
     meta_parser = parser.add_argument_group('metadata',
