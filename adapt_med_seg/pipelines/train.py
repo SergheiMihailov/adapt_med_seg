@@ -13,7 +13,6 @@ from adapt_med_seg.models import MODELS
 from adapt_med_seg.pipelines.utils.initializers import intialize_model
 from adapt_med_seg.utils.average_meter import AverageMeter
 import pytorch_lightning as pl
-from peft import LoraConfig
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
