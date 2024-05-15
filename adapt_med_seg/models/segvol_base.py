@@ -41,7 +41,7 @@ class SegVolBase(SegVolModel):
         self.model.to("mps")
         
 
-class SegVolLoRAViT(SegVolBase):
+class SegVolLoraViT(SegVolBase):
     def __init__(self, config: SegVolConfig):
         super().__init__(config)
         lora_config = LoraConfig(
@@ -54,7 +54,7 @@ class SegVolLoRAViT(SegVolBase):
         )
         self.model = get_peft_model(self.model, lora_config)
 
-class SegVolLoRAAll(SegVolBase):
+class SegVolLoraAll(SegVolBase):
     def __init__(self, config: SegVolConfig):
         super().__init__(config)
         lora_config = LoraConfig(
