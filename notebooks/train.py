@@ -5,7 +5,7 @@ from pytorch_lightning import Trainer, seed_everything
 
 seed_everything(42)
 
-model_names = ["segvol_baseline"]
+model_names = ["segvol_baseline", "segvol_lora_vit", "segvol_lora_all"]
 dataset_numbers = [0]
 
 for model_name in model_names:
