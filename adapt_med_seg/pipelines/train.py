@@ -41,31 +41,10 @@ class SegVolLightning(pl.LightningModule):
         self.save_hyperparameters()
 
         config = SegVolConfig(test_mode=False)
-        self._model = self.initialize_model(model_name, config)
+        self._model = MODELS[model_name](config)
         self.processor = self._model.processor
         self.dataset_number = dataset_number
         self.validation_step_outputs = []
-
-    def initialize_model(self, model_name, config):
-            if model_name == "segvol_lora_vit":
-                lora_config = LoraConfig(
-                    r=32,
-                    lora_alpha=32,
-                    target_modules=["query", "value"],
-                    lora_dropout=0.1,
-                    bias="lora_only",
-                    modules_to_save=["decode_head"]
-                )
-                return MODELS[model_name](config, lora_config)
-            elif model_name == "segvol_lora_all":
-                lora_config = LoraConfig(
-                    r=32,
-                    lora_alpha=32,
-                    lora_dropout=0.1
-                )
-                return MODELS[model_name](config, lora_config)
-            else:
-                return MODELS[model_name](config)
 
 
     def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
