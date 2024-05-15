@@ -6,6 +6,7 @@ from SegVol.model_segvol_single import (
     SegVolProcessor,
 )
 
+from peft import LoraConfig, get_peft_model
 
 class SegVolBase(SegVolModel):
     """
@@ -38,3 +39,14 @@ class SegVolBase(SegVolModel):
 
     def to_mps(self) -> Self:
         self.model.to("mps")
+        
+        
+class SegVolLoraViT(SegVolBase):
+    def __init__(self, config: SegVolConfig, lora_config: LoraConfig):
+        super().__init__(config)
+        self.model = get_peft_model(self.model, lora_config)
+
+class SegVolLoraAll(SegVolBase):
+    def __init__(self, config: SegVolConfig, lora_config: LoraConfig):
+        super().__init__(config)
+        self.model = get_peft_model(self.model, lora_config)
