@@ -1,5 +1,16 @@
+"""
+Dataset utilities for the CHAOS dataset.
+defines:
+- chaos_image_loader
+- chaos_label_loader
+- chaos_data_download
+"""
+
+import os
 from typing import List, Dict, Tuple, Callable
-import pydicom
+import numpy as np
+import requests
+import zipfile as zf
 import matplotlib.pyplot as plt
 from monai.transforms import (
     LoadImage,
@@ -7,52 +18,42 @@ from monai.transforms import (
     Compose,
     ToNumpy
 )
-from monai.data.image_reader import NibabelReader
 
-import numpy as np
-import json
-import csv
-import os
+from util import load_callback, SPLIT_NAMES
 
-SPLIT_NAMES = ['train', 'val', 'test']
-MODALITY_MAPPING = {
-    '0': 'CT',
-    '1': 'MRI'
-}
-AMOS_MACHINE_TO_MODALITY = {
-    'Ingenia': '1',
-    'Optima CT660': '0',
-    'Brilliance16': '0',
-    'SIGNA HDe': '1',
-    'Achieva': '1',
-    'Optima CT540': '0',
-    'SOMATOM Force': '0',
-    'Aquilion ONE': '0',
-    'Prisma': '1',
-}
-class load_callback:
-    def __init__(self, loader: Callable, *args, **kwargs) -> None:
-        self.loader = loader
-        self.args = args
-        self.kwargs = kwargs
-    def __call__(self):
-        return self.loader(*self.args, **self.kwargs)
+def chaos_data_download(data_root: str) -> str:
+    """
+        Download the CHAOS dataset and the metadata,
+        perpare the directory structure.
+        OR do nothing if the data is already downloaded.
+        Returns the path to the extracted data.
+    """
+    chaos_data_url = 'https://zenodo.org/records/3431873/files/CHAOS_Train_Sets.zip'
 
-img_loader_amos = Compose(
-    [
-        LoadImage(reader=NibabelReader()),
-        EnsureChannelFirst(channel_dim="no_channel"),
-        ToNumpy()
-    ]
-)
+    # data_root may point to Train_Sets directory (which may or may not exist)
+    if os.path.basename(data_root) == 'Train_Sets':
+        data_root = os.path.dirname(data_root)
+    if not os.path.exists(data_root):
+        os.makedirs(data_root)
+    # download the data
+    chaos_data_path = os.path.join(data_root, 'CHAOS_Train_Sets.zip')
+    if not os.path.exists(chaos_data_path):
+        print('Downloading CHAOS data...')
+        r = requests.get(chaos_data_url, allow_redirects=True)
+        with open(chaos_data_path, 'wb') as f:
+            f.write(r.content)
+    # extract the data
+    chaos_data_dir = os.path.join(data_root, 'Train_Sets')
+    if not os.path.exists(chaos_data_dir):
+        print('Extracting CHAOS data...')
+        with zf.ZipFile(chaos_data_path, 'r') as z:
+            z.extractall(data_root)
+    # remove the zip file
+    if os.path.exists(chaos_data_path):
+        os.remove(chaos_data_path)
 
-## CHAOS dataset loaders
-# CT data has only liver segmentation masks (binary), while
-# MR data has multiple masks, these are
-#    Liver: 63 (55 <<< 70)
-#    Right kidney: 126 (110 <<< 135)
-#    Left kidney: 189 (175 <<< 200)
-#    Spleen: 252 (240 <<< 255)
+    return chaos_data_dir
+
 chaos_classes = {
     '1': 'Liver',
     '2': 'Right kidney',
@@ -65,7 +66,7 @@ chaos_cls_intervals = {
     '2': (110/255, 135/255),
     '3': (175/255, 200/255),
     '4': (240/255, 255/255)
-    }
+}
 
 def chaos_image_loader(path):
     img_loader = Compose(
@@ -79,6 +80,7 @@ def chaos_image_loader(path):
     # transpose along the 2nd and 3rd axis
     img = np.transpose(img, (0, 2, 1, 3))
     return img
+
 
 def chaos_label_loader(path, is_ct: bool):
     """
@@ -97,100 +99,23 @@ def chaos_label_loader(path, is_ct: bool):
                 # set the pixels in the given interval to the class
                 label_img[(label_img >= chaos_cls_intervals[c][0]) &
                           (label_img <= chaos_cls_intervals[c][1])] = float(c) * -1
-            label_img[label_img < 0] *= -1 # flip sign back
+            label_img[label_img < 0] *= -1  # flip sign back
         label_array.append(label_img)
     label_array = np.stack(label_array, axis=-1).astype(np.int32)
     return ToNumpy()(EnsureChannelFirst(channel_dim="no_channel")(label_array))
 
 
-def parse_amos(data_root: str,
-               val_ratio: float) -> Tuple[Dict[str, List[Tuple[str,Callable]]],
-                                        Dict[str, List[str]],
-                                        List[str]]:
-    """
-        Parse the metadata for the AMOS dataset and return the data
-        split as a dictionary.
-    """
-    prefix = 'amos_'
-    # format of the files is
-    # 'amos22/[images_[Tr|Va|Ts]|labels[Tr|Va|Ts]]/<prefix><amos_id>.nii.gz' in the data root
-    # data root contains a dataset.json and its parent
-    # (hopefully) contains labeled_data_meta_0000_0599.csv
-
-    # load JSON
-    dataset_json_path = os.path.join(data_root, 'amos22', 'dataset.json')
-    if not os.path.isfile(dataset_json_path):
-        raise ValueError('dataset.json not found in data root')
-    with open(dataset_json_path, 'r') as f:
-        dataset_json = json.load(f)
-
-    # Load the CSV file
-    metadata_path = os.path.join(data_root, 'labeled_data_meta_0000_0599.csv')
-    if not os.path.isfile(metadata_path):
-        raise ValueError('metadata file not found in {data_root}/../labeled_data_meta_0000_0599.csv')
-    with open(metadata_path, 'r') as f:
-        metadata = csv.DictReader(f)
-        metadata = {int(dp['amos_id']): dp for dp in metadata}
-
-    data_paths = {
-        'train': {'images': os.path.join(data_root, 'amos22', 'imagesTr'),
-                  'labels': os.path.join(data_root, 'amos22', 'labelsTr')},
-        'test': {'images': os.path.join(data_root, 'amos22', 'imagesVa'),
-                'labels': os.path.join(data_root, 'amos22', 'labelsVa')},
-        # test data has no masks
-    }
-
-    # create splits dictionary
-    data_splits = {key: [] for key in SPLIT_NAMES}
-    modality_info = {key: [] for key in SPLIT_NAMES}
-    for split in ['train', 'test']:
-        images_dir = data_paths[split]['images']
-        labels_dir = data_paths[split]['labels']
-        images_list = sorted(os.listdir(images_dir))
-        labels_list = sorted(os.listdir(labels_dir))
-        for img, lab in zip(images_list, labels_list):
-            img_id = img.split('.')[0][len(prefix):]
-            if int(img_id) not in metadata:
-                print(f'{img_id} not found in metadata. Skipping.')
-                continue
-            modality = AMOS_MACHINE_TO_MODALITY[metadata[int(img_id)]["Manufacturer's Model Name"]]
-            data_splits[split].append((str(img_id),
-                                       load_callback(img_loader_amos, os.path.join(images_dir, img)),
-                                       load_callback(img_loader_amos, os.path.join(labels_dir, lab))))
-            modality_info[split].append(modality)
-
-    val_indices = np.random.choice(len(data_splits['train']),
-                                   int(val_ratio*len(data_splits['train'])), replace=False)
-    val_indices = set(val_indices)
-    data_splits['val'] = [data_splits['train'][idx] for idx in val_indices]
-    modality_info['val'] = [modality_info['train'][idx] for idx in val_indices]
-    # remove the validation samples from the training set
-    train_indices = set(range(len(data_splits['train'])))-val_indices
-    data_splits['train'] = [data_splits['train'][idx]
-                            for idx in train_indices]
-    modality_info['train'] = [modality_info['train'][idx]
-                              for idx in train_indices]
-
-    print('train:', len(data_splits['train']),
-          'val:', len(data_splits['val']),
-          'test:', len(data_splits['test']))
-
-    # obtain list of labels and corr. classes
-    classes = dataset_json['labels']
-    if '0' in classes: 
-        classes.pop('0')
-
-    return data_splits, modality_info, classes
-
 def parse_chaos(data_root: str,
                 test_ratio: float,
-                val_ratio: float) -> Tuple[Dict[str, List[Tuple[int,Callable]]],
-                                         Dict[str, List[str]],
-                                         List[str]]:
+                val_ratio: float) -> Tuple[Dict[str, List[Tuple[int, Callable]]],
+                                           Dict[str, List[str]],
+                                           List[str]]:
     """
         Parse the metadata for the CHAOS dataset and return the data
         split as a dictionary.
     """
+    # first make sure the data exists
+    data_root = chaos_data_download(data_root)
 
     # CHAOS data has two directories at the root and no config files
     # CT directory contains CT images, in DICOM format and gt masks in PNG format
@@ -216,14 +141,16 @@ def parse_chaos(data_root: str,
         splits_list.append((name, image_load, label_load))
         mod_list.append('0')
     # create test split
-    test_idx = np.random.choice(len(splits_list), int(test_ratio*len(splits_list)), replace=False)
+    test_idx = np.random.choice(len(splits_list), int(
+        test_ratio*len(splits_list)), replace=False)
     test_idx = set(test_idx)
     data_splits['test'] = [splits_list[idx] for idx in test_idx]
     modality_info['test'] = [mod_list[idx] for idx in test_idx]
     # remove the test splits
     rest_idx = set(range(len(splits_list))) - test_idx
     # create val split
-    val_idx = np.random.choice(list(rest_idx), int(val_ratio*len(splits_list)), replace=False)
+    val_idx = np.random.choice(list(rest_idx), int(
+        val_ratio*len(splits_list)), replace=False)
     val_idx = set(val_idx)
     data_splits['val'] = [splits_list[idx] for idx in val_idx]
     modality_info['val'] = [mod_list[idx] for idx in val_idx]
@@ -259,24 +186,29 @@ def parse_chaos(data_root: str,
         label_loader_spir = load_callback(chaos_label_loader,
                                           **{'path': label_path_spir, 'is_ct': False})
         # image
-        image_path_spir = os.path.join(mr_data_root, idx, 'T2SPIR', 'DICOM_anon')
+        image_path_spir = os.path.join(
+            mr_data_root, idx, 'T2SPIR', 'DICOM_anon')
         image_loader_spir = load_callback(chaos_image_loader, image_path_spir)
         # append, while keeping the in and out phase images together.
         # they come from the same patient so its not good to have them in different splits
         splits_list.append(((f'mr_{idx}_in', image_loader_in, label_loader_dual),
-                            (f'mr_{idx}_out', image_loader_out, label_loader_dual),
+                            (f'mr_{idx}_out', image_loader_out,
+                             label_loader_dual),
                             (f'mr_{idx}_spir', image_loader_spir, label_loader_spir)))
         mod_list.append(('1', '1', '1'))
     # create test split
-    test_idx = np.random.choice(len(splits_list), int(test_ratio*len(splits_list)), replace=False)
+    test_idx = np.random.choice(len(splits_list), int(
+        test_ratio*len(splits_list)), replace=False)
     test_idx = set(test_idx)
     data_splits['test'].extend(
         [split for idx in test_idx for split in splits_list[idx]])
-    modality_info['test'].extend([mod for idx in test_idx for mod in mod_list[idx]])
+    modality_info['test'].extend(
+        [mod for idx in test_idx for mod in mod_list[idx]])
     # remove the test splits
     rest_idx = set(range(len(splits_list))) - test_idx
     # create val split
-    val_idx = np.random.choice(list(rest_idx), int(val_ratio*len(splits_list)), replace=False)
+    val_idx = np.random.choice(list(rest_idx), int(
+        val_ratio*len(splits_list)), replace=False)
     val_idx = set(val_idx)
     data_splits['val'].extend(
         [split for idx in val_idx for split in splits_list[idx]])

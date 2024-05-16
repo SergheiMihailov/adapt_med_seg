@@ -13,9 +13,10 @@ from monai.transforms import (
 from glob import glob
 
 from cli import parse_arguments
-from splits import (SPLIT_NAMES, MODALITY_MAPPING,
-                    parse_amos, parse_chaos)
 from process_modality import process_ct_image, process_mr_image
+from util import MODALITY_MAPPING, SPLIT_NAMES
+from data_sets.amos import parse_amos
+from data_sets.chaos import parse_chaos
 
 # image loader that we use for loading the images
 # supports both nifti and dicom
