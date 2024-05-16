@@ -12,6 +12,7 @@ from util import MODALITY_MAPPING, SPLIT_NAMES
 from data_sets.amos import parse_amos
 from data_sets.chaos import parse_chaos
 from data_sets.promise12 import parse_promise12
+from data_sets.msd import parse_msd
 
 def preprocess_image(info):
     """
@@ -78,6 +79,14 @@ def run(args: Namespace):
                                                           args.val_ratio)
     elif args.dataset_type == 'PROMISE12':
         data_splits, modality_info, classes = parse_promise12(args.dataset_root, args.val_ratio)
+    elif args.dataset_type.startswith('MSD'):
+        dataset_name = args.dataset_type.split('_')
+        if len(dataset_name) != 2:
+            raise ValueError(f'Invalid dataset name: {args.dataset_type}. Try e.g MSD_Prostate')
+        data_splits, modality_info, classes = parse_msd(data_root=args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio,
+                                                        dataset_name=dataset_name[1])
     else:
         raise ValueError(f'Unknown dataset code: {args.dataset_type}')
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
