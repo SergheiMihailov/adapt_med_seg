@@ -35,22 +35,23 @@ def chaos_data_download(data_root: str) -> str:
         data_root = os.path.dirname(data_root)
     if not os.path.exists(data_root):
         os.makedirs(data_root)
-    # download the data
     chaos_data_path = os.path.join(data_root, 'CHAOS_Train_Sets.zip')
-    if not os.path.exists(chaos_data_path):
-        print('Downloading CHAOS data...')
-        r = requests.get(chaos_data_url, allow_redirects=True)
-        with open(chaos_data_path, 'wb') as f:
-            f.write(r.content)
-    # extract the data
     chaos_data_dir = os.path.join(data_root, 'Train_Sets')
+
     if not os.path.exists(chaos_data_dir):
+        # download the data
+        if not os.path.exists(chaos_data_path):
+            print('Downloading CHAOS data...')
+            r = requests.get(chaos_data_url, allow_redirects=True)
+            with open(chaos_data_path, 'wb') as f:
+                f.write(r.content)
+        # extract the data
         print('Extracting CHAOS data...')
         with zf.ZipFile(chaos_data_path, 'r') as z:
             z.extractall(data_root)
-    # remove the zip file
-    if os.path.exists(chaos_data_path):
-        os.remove(chaos_data_path)
+        # remove the zip file
+        if os.path.exists(chaos_data_path):
+            os.remove(chaos_data_path)
 
     return chaos_data_dir
 

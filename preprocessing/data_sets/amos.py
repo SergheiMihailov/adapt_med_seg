@@ -36,29 +36,29 @@ def amos_data_download(data_root: str) -> None:
         data_root = os.path.dirname(data_root)
     if not os.path.exists(data_root):
         os.makedirs(data_root)
-    # download the data
     amos_data_path = os.path.join(data_root, 'amos22.zip')
-    if not os.path.exists(amos_data_path):
-        print('Downloading AMOS data...')
-        response = requests.get(amos_data_url)
-        with open(amos_data_path, 'wb') as f:
-            f.write(response.content)
-    # download the metadata
     metadata_path = os.path.join(data_root, 'labeled_data_meta_0000_0599.csv')
-    if not os.path.exists(metadata_path):
-        print('Downloading AMOS metadata...')
-        response = requests.get(amos_metadata_url)
-        with open(metadata_path, 'wb') as f:
-            f.write(response.content)
-    # unzip the data
     amos_data_dir = os.path.join(data_root, 'amos22')
     if not os.path.exists(amos_data_dir):
+    # download the data
+        if not os.path.exists(amos_data_path):
+            print('Downloading AMOS data...')
+            response = requests.get(amos_data_url)
+            with open(amos_data_path, 'wb') as f:
+                f.write(response.content)
+        # download the metadata
+        if not os.path.exists(metadata_path):
+            print('Downloading AMOS metadata...')
+            response = requests.get(amos_metadata_url)
+            with open(metadata_path, 'wb') as f:
+                f.write(response.content)
+        # unzip the data
         print('Unzipping AMOS data...')
         with zf.ZipFile(amos_data_path, 'r') as z:
             z.extractall(data_root)
-    # delete the zip file
-    if os.path.exists(amos_data_path):
-        os.remove(amos_data_path)
+        # delete the zip file
+        if os.path.exists(amos_data_path):
+            os.remove(amos_data_path)
     return data_root
 
 AMOS_MACHINE_TO_MODALITY = {
@@ -82,16 +82,15 @@ amos_image_loader = Compose(
 )
 amos_label_loader = amos_image_loader
 
-def parse_amos(data_root: str) -> Tuple[Dict[str, List[Tuple[str, Callable]]],
-                                        Dict[str, List[str]],
-                                        List[str]]:
+
+def parse_amos(data_root: str,
+               val_ratio: float) -> Tuple[Dict[str, List[Tuple[str, Callable]]],
+                                          Dict[str, List[str]],
+                                          List[str]]:
     """
         Parse the metadata for the AMOS dataset and return the data
         split as a dictionary.
     """
-    # first make sure the data exists
-    data_root = amos_data_download(data_root)
-
     prefix = 'amos_'
     # format of the files is
     # 'amos22/[images_[Tr|Va|Ts]|labels[Tr|Va|Ts]]/<prefix><amos_id>.nii.gz' in the data root
@@ -109,49 +108,60 @@ def parse_amos(data_root: str) -> Tuple[Dict[str, List[Tuple[str, Callable]]],
     metadata_path = os.path.join(data_root, 'labeled_data_meta_0000_0599.csv')
     if not os.path.isfile(metadata_path):
         raise ValueError(
-            'metadata file not found in {data_root}/labeled_data_meta_0000_0599.csv')
+            'metadata file not found in {data_root}/../labeled_data_meta_0000_0599.csv')
     with open(metadata_path, 'r') as f:
         metadata = csv.DictReader(f)
-        metadata = {dp['amos_id']: dp for dp in metadata}
+        metadata = {int(dp['amos_id']): dp for dp in metadata}
 
     data_paths = {
         'train': {'images': os.path.join(data_root, 'amos22', 'imagesTr'),
                   'labels': os.path.join(data_root, 'amos22', 'labelsTr')},
-        'val': {'images': os.path.join(data_root, 'amos22', 'imagesVa'),
-                'labels': os.path.join(data_root, 'amos22', 'labelsVa')},
-        'test': {'images': os.path.join(data_root, 'amos22', 'imagesTs'),
-                 'labels': os.path.join(data_root, 'amos22', 'labelsTs')}
+        'test': {'images': os.path.join(data_root, 'amos22', 'imagesVa'),
+                 'labels': os.path.join(data_root, 'amos22', 'labelsVa')},
+        # test data has no masks
     }
 
     #  create splits dictionary
     data_splits = {key: [] for key in SPLIT_NAMES}
     modality_info = {key: [] for key in SPLIT_NAMES}
-    for split in SPLIT_NAMES:
+    for split in ['train', 'test']:
         images_dir = data_paths[split]['images']
         labels_dir = data_paths[split]['labels']
         images_list = sorted(os.listdir(images_dir))
         labels_list = sorted(os.listdir(labels_dir))
         for img, lab in zip(images_list, labels_list):
             img_id = img.split('.')[0][len(prefix):]
-            modality = AMOS_MACHINE_TO_MODALITY[metadata[img_id]
-                                                ['Manufacturer\'s Model Name']]
+            if int(img_id) not in metadata:
+                print(f'{img_id} not found in metadata. Skipping.')
+                continue
+            modality = AMOS_MACHINE_TO_MODALITY[metadata[int(
+                img_id)]["Manufacturer's Model Name"]]
             data_splits[split].append((str(img_id),
-                                       load_callback(
-                                           amos_image_loader, os.path.join(images_dir, img)),
-                                       load_callback(amos_image_loader, os.path.join(labels_dir, lab))))
+                                       load_callback(amos_image_loader,
+                                                     os.path.join(images_dir, img)),
+                                       load_callback(amos_image_loader,
+                                                     os.path.join(labels_dir, lab))))
             modality_info[split].append(modality)
-    # check that the lengths are correct
-    assert (len(data_splits['train']) == dataset_json['numTraining']), \
-        f'number of training samples mismatch.' +\
-        ' found: {len(data_splits["train"])} expected: {dataset_json["numTraining"]}'
-    assert (len(data_splits['val']) == dataset_json['numValidation']), \
-        f'number of validation samples mismatch.' +\
-        ' found: {len(data_splits["val"])} expected: {dataset_json["numValidation"]}'
-    assert (len(data_splits['test']) == dataset_json['numTest']), \
-        f'number of test samples mismatch.' +\
-        ' found: {len(data_splits["test"])} expected: {dataset_json["numTest"]}'
+
+    val_indices = np.random.choice(len(data_splits['train']),
+                                   int(val_ratio*len(data_splits['train'])), replace=False)
+    val_indices = set(val_indices)
+    data_splits['val'] = [data_splits['train'][idx] for idx in val_indices]
+    modality_info['val'] = [modality_info['train'][idx] for idx in val_indices]
+    # remove the validation samples from the training set
+    train_indices = set(range(len(data_splits['train'])))-val_indices
+    data_splits['train'] = [data_splits['train'][idx]
+                            for idx in train_indices]
+    modality_info['train'] = [modality_info['train'][idx]
+                              for idx in train_indices]
+
+    print('train:', len(data_splits['train']),
+          'val:', len(data_splits['val']),
+          'test:', len(data_splits['test']))
 
     # obtain list of labels and corr. classes
     classes = dataset_json['labels']
+    if '0' in classes:
+        classes.pop('0')
 
     return data_splits, modality_info, classes
