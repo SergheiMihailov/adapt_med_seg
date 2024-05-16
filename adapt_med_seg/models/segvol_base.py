@@ -25,10 +25,12 @@ class SegVolBase(SegVolModel):
         self.processor = SegVolProcessor(spatial_size=self.config.spatial_size)
 
     def eval(self) -> Self:
-        self.model.eval()
+        self.model.train(False)
 
     def train(self, mode = True) -> Self:
         self.model.train(mode)
+        self.model.test_mode = not mode
+        self.config.test_mode = not mode
 
     def to_cpu(self) -> Self:
         self.model.to("cpu")

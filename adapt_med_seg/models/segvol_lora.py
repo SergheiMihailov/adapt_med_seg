@@ -35,3 +35,8 @@ class SegVolLORA(SegVolModel):
         
     def save_pretrained(self, path: str):
         self.model.save_pretrained(path)
+
+    def train(self, mode = True):
+        self.model.model.train(mode)
+        self.model.model.test_mode = not mode
+        self.config.test_mode = not mode

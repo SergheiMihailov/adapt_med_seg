@@ -18,7 +18,7 @@ for model_name in model_names:
             # use_wandb=True,
         )
 
-        train_pipeline = SegVolLightning(model_name)
+        train_pipeline = SegVolLightning(model_name, test_mode=False)
 
         _dataset = MedSegDataset(
             processor=train_pipeline._model.processor,
@@ -34,7 +34,7 @@ for model_name in model_names:
             max_epochs=10,
             accelerator=training_args.device,
             deterministic=True,
-            num_sanity_val_steps=0,
+            num_sanity_val_steps=1,
         )
         trainer.fit(train_pipeline, train_dataloader, val_dataloader)
         # results = train_pipeline.run()

@@ -36,11 +36,12 @@ class SegVolLightning(pl.LightningModule):
         self,
         model_name="segvol_baseline",
         dataset_number=0,
+        test_mode=True,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
 
-        self._model = MODELS[model_name](SegVolConfig(test_mode=False))
+        self._model = MODELS[model_name](SegVolConfig(test_mode=test_mode))
         self.processor = self._model.processor
 
         self.dataset_number = dataset_number
@@ -123,16 +124,6 @@ class SegVolLightning(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         return self.validation_step(batch, batch_idx)
-
-    def train(self, mode=True):
-        super().train(mode)
-        self._model.model.test_mode = False
-        self._model.config.test_mode = False
-
-    def eval(self):
-        super().eval()
-        self._model.model.test_mode = True
-        self._model.config.test_mode = True
 
     def on_train_epoch_start(self):
         super().on_train_epoch_start()
