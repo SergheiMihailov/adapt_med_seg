@@ -41,11 +41,12 @@ class SegVolLightning(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self._model = MODELS[model_name](SegVolConfig(test_mode=test_mode))
+        config = SegVolConfig(test_mode=test_mode)
+        self._model = MODELS[model_name](config)
         self.processor = self._model.processor
-
         self.dataset_number = dataset_number
         self.validation_step_outputs = []
+
 
     def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
         """Set the dataset for the training pipeline. This method should be called before training. If used in evaluation, you must supply the class index."""
@@ -140,12 +141,3 @@ class SegVolLightning(pl.LightningModule):
         return torch.optim.Adam(
             filter(lambda param: param.requires_grad, self.parameters()), lr=1e-4
         )
-
-    def get_dataloaders(self):
-        return self._dataset.get_train_val_dataloaders(1 / 9, 1, 42)
-
-    def train_dataloader(self):
-        return self._dataset.get_train_val_dataloaders(1 / 9, 1, 42)[0]
-
-    def val_dataloader(self):
-        return self._dataset.get_train_val_dataloaders(1 / 9, 1, 42)[1]
