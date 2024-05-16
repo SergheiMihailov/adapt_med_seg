@@ -54,7 +54,10 @@ class MedSegDataset(Dataset):
         ct_npy, gt_npy = self._processor.load_uniseg_case(ct_path, gt_path)
         modality_tensor = torch.tensor([modality])
 
-        data_item = self._processor.zoom_transform(ct_npy, gt_npy)
+        if self.train and idx not in getattr(self, "_test_indices", []):
+            data_item = self._processor.train_transform(ct_npy, gt_npy)
+        else:
+            data_item = self._processor.zoom_transform(ct_npy, gt_npy)
 
         return data_item, gt_npy, modality_tensor
 
@@ -132,7 +135,8 @@ class MedSegDataset(Dataset):
         for split in splits:
             data_idxs[split] = []
             case_paths = dataset_dict[split]
-            for idx, case_ in enumerate(case_paths):
+            idx = 0
+            for case_ in case_paths:
                 if case_["modality"] not in mod_ids:
                     continue
                 self._ct_paths.append(
@@ -141,7 +145,8 @@ class MedSegDataset(Dataset):
                     os.path.join(self.dataset_path, case_["label"]))
                 self._case_modality.append(int(case_["modality"]))
                 data_idxs[split].append(base + idx)
-            base += len(case_paths)
+                idx += 1
+            base += idx
         if self.train:
             # create subsets for each split
             self._tr_val_splits = {split: Subset(self, data_idxs[split])
@@ -160,6 +165,9 @@ class MedSegDataset(Dataset):
         train_loader = DataLoader(
             train_subset, batch_size=batch_size, shuffle=True, pin_memory=True
         )
+
+        # Hack to get the test indices for __getitem__
+        self._test_indices = val_subset.indices
         val_loader = DataLoader(
             val_subset, batch_size=batch_size, shuffle=False, pin_memory=True
         )

@@ -170,3 +170,4 @@ runtime_data/
 /wandb
 notebooks/data/*
 notebooks/wandb/*
+lightning_logs/
