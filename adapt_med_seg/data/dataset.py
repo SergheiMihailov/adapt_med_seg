@@ -1,5 +1,6 @@
 from typing import List
 from dataclasses import dataclass
+from glob import glob
 import json
 import os
 
@@ -94,7 +95,10 @@ class MedSegDataset(Dataset):
 
     def load_dataset(self) -> None:
         """
-            Loads the dataset from the dataset.json file
+            Loads the dataset from the dataset.json file.
+            If no dataset.json is found in the root of the dataset folder,
+            it recursively searches for multiple dataset.json files in the
+            subdirectories of the dataset folder. 
             sets static attributes:
             - name
             - dataset_number
@@ -105,35 +109,70 @@ class MedSegDataset(Dataset):
             creates a Subset for each split (train, val) or (test), 
             depending on the train attribute.
         """
-        json_path = os.path.join(self._dataset_path, "dataset.json")
-        
-        if not os.path.exists(json_path):
-            raise ValueError("Dataset JSON not found")
 
-        with open(json_path, "r", encoding="utf-8") as f:
-            dataset_dict = json.load(f)
+        if os.path.exists(os.path.join(self.dataset_path, "dataset.json")):
+            dataset_paths = [os.path.join(self.dataset_path)]
+        else:
+            dataset_paths = [
+                os.path.dirname(path)
+                for path in glob(os.path.join(self.dataset_path, "**", "dataset.json"))
+            ]
 
-        self._name = dataset_dict["name"]
-        self._dataset_number = dataset_dict["description"]
-
-        self._modality_id2name = dataset_dict["modality"]
-        self._modality_name2id = {  #  we will likely need this
-            v: k for k, v in self._modality_id2name.items()
-        }
-        mod_ids = set([self._modality_name2id[mod]
-                      for mod in self._modalities])
-
-        self._labels = [
-            x for _, x in dataset_dict["labels"].items() if x != "background"
-        ]
-        splits = ["train", "val"] if self.train else ["test"]
+        self._modality_id2name = {}
+        self._modality_name2id = {}
+        self._labels = []
         self._ct_paths = []
         self._gt_paths = []
         self._case_modality = []
-        data_idxs = {}
-        base = 0
+        splits = ["training", "validation"] if self.train else ["test"]
+        self.data_idxs = {split: [] for split in splits}
+
+        dataset_names = []
+        dataset_numbers = []
+        for dataset_path in dataset_paths:
+            dataset_name, dataset_number = self._load_single_dataset(dataset_path, splits)
+            dataset_names.append(dataset_name)
+            dataset_numbers.append(dataset_number)
+
+        self._name = dataset_names[0] if len(dataset_names) == 1 else \
+            f"{'/'.join(dataset_names)}"
+        self._dataset_number = dataset_numbers[0] if len(dataset_numbers) == 1 else \
+            f"{'/'.join(dataset_numbers)}"
+
+        # shuffle the data indices, otherwise they will be sorted by dataset
         for split in splits:
-            data_idxs[split] = []
+            self.data_idxs[split] = torch.tensor(
+                self.data_idxs[split])[torch.randperm(len(self.data_idxs[split]))]
+
+        if self.train:
+            # create subsets for each split
+            self._tr_val_splits = {split: Subset(self, self.data_idxs[split])
+                                   for split in splits}
+
+
+    def _load_single_dataset(self, dataset_path: str, splits: List[str]) -> None:
+        json_path = os.path.join(dataset_path, "dataset.json")
+        with open(json_path, "r", encoding="utf-8") as f:
+            dataset_dict = json.load(f)
+
+        name = dataset_dict["name"]
+        dataset_number = dataset_dict["description"]
+
+        self._modality_id2name.update(dataset_dict["modality"])
+        self._modality_name2id.update({  #  we will likely need this
+            v: k for k, v in self._modality_id2name.items()
+        })
+        mod_ids = set([self._modality_name2id[mod]
+                      for mod in self._modalities])
+
+        # concatenate labels
+        self._labels = list(
+            set(self._labels).union(set([
+            x for _, x in dataset_dict["labels"].items() if x != "background"
+        ])))
+
+        base = len(self._ct_paths)
+        for split in splits:
             case_paths = dataset_dict[split]
             idx = 0
             for case_ in case_paths:
@@ -144,13 +183,11 @@ class MedSegDataset(Dataset):
                 self._gt_paths.append(
                     os.path.join(self.dataset_path, case_["label"]))
                 self._case_modality.append(int(case_["modality"]))
-                data_idxs[split].append(base + idx)
+                self.data_idxs[split].append(base + idx)
                 idx += 1
             base += idx
-        if self.train:
-            # create subsets for each split
-            self._tr_val_splits = {split: Subset(self, data_idxs[split])
-                                   for split in splits}
+
+        return name, dataset_number
 
     def get_train_val_dataloaders(
         self,
@@ -159,8 +196,8 @@ class MedSegDataset(Dataset):
         if not self.train:
             raise ValueError("This method is only for training dataset")
 
-        train_subset = self._tr_val_splits["train"]
-        val_subset = self._tr_val_splits["val"]
+        train_subset = self._tr_val_splits["training"]
+        val_subset = self._tr_val_splits["validation"]
 
         train_loader = DataLoader(
             train_subset, batch_size=batch_size, shuffle=True, pin_memory=True
