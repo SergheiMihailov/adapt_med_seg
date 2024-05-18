@@ -14,6 +14,7 @@ from data_sets.chaos import parse_chaos
 from data_sets.promise12 import parse_promise12
 from data_sets.msd import parse_msd
 from data_sets.t2w_mri import parse_t2w_mri
+from data_sets.saml import parse_saml
 
 def preprocess_image(info):
     """
@@ -92,6 +93,10 @@ def run(args: Namespace):
         data_splits, modality_info, classes = parse_t2w_mri(data_root=args.dataset_root,
                                                             test_ratio=args.test_ratio,
                                                             val_ratio=args.val_ratio)
+    elif args.dataset_type == 'SAML':
+        data_splits, modality_info, classes = parse_saml(args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio)
     else:
         raise ValueError(f'Unknown dataset code: {args.dataset_type}')
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
