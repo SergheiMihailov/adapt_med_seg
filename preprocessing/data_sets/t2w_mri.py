@@ -16,7 +16,7 @@ from glob import glob
 import numpy as np
 from typing import List, Dict, Tuple, Callable
 
-from util import load_callback, SPLIT_NAMES
+from util import load_callback, SPLIT_NAMES, three_way_split
 
 T2W_LABELS = {
     '1': 'prostate'
@@ -75,7 +75,9 @@ def parse_t2w_mri(data_root: str,
         Returns a dictionary with keys 'train', 'val', 'test' and 'all',
         where each key maps to a list of tuples (image_path, loader_fn).
     """
+    # download the data
     t2w_data_dir = t2w_mri_data_download(data_root)
+
     image_dir = os.path.join(t2w_data_dir, 'T2_IMAGES')
     label_dir = os.path.join(t2w_data_dir, 'LABELS')
     # the directory also has a CSV containing metadata but we ignore it
@@ -97,18 +99,13 @@ def parse_t2w_mri(data_root: str,
     # create the splits
     data_splits = {key: [] for key in SPLIT_NAMES}
     modality_info = {key: [] for key in SPLIT_NAMES}
-    test_ids = np.random.choice(len(data_list), int(test_ratio*len(data_list)), replace=False)
-    test_ids = set(test_ids)
-    data_splits['test'] = [data_list[idx] for idx in test_ids]
-    modality_info['test'] = [modality_list[idx] for idx in test_ids]
-    rest_ids = set(range(len(data_list))) - test_ids
-    val_ids = np.random.choice(list(rest_ids), int(val_ratio*len(data_list)), replace=False)
-    val_ids = set(val_ids)
-    data_splits['val'] = [data_list[idx] for idx in val_ids]
-    modality_info['val'] = [modality_list[idx] for idx in val_ids]
-    rest_ids = rest_ids - val_ids
-    train_ids = rest_ids - val_ids
-    data_splits['train'] = [data_list[idx] for idx in train_ids]
-    modality_info['train'] = [modality_list[idx] for idx in train_ids]
+    train_split, val_split, test_split = three_way_split(
+        data_list, modality_list, test_ratio=test_ratio, val_ratio=val_ratio)
+    data_splits['train'] = train_split[0]
+    modality_info['train'] = train_split[1]
+    data_splits['val'] = val_split[0]
+    modality_info['val'] = val_split[1]
+    data_splits['test'] = test_split[0]
+    modality_info['test'] = test_split[1]
 
     return data_splits, modality_info, T2W_LABELS

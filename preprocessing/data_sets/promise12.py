@@ -14,7 +14,7 @@ import requests
 import numpy as np
 from typing import List, Dict, Tuple, Callable
 import SimpleITK as sitk
-from util import load_callback, SPLIT_NAMES
+from util import load_callback, SPLIT_NAMES, two_way_split
 
 def promise12_data_download(data_root: str) -> str:
     """
@@ -117,13 +117,11 @@ def parse_promise12(data_root: str,
             modality_info[split].append('1') # MRI
             index += 1
     # split the training data into train and validation
-    val_idx = np.random.choice(len(data_splits['train']),
-                               int(val_ratio*len(data_splits['train'])), replace=False)
-    val_idx = set(val_idx)
-    train_idx = set(range(len(data_splits['train'])))-val_idx
-    data_splits['val'] = [data_splits['train'][idx] for idx in val_idx]
-    modality_info['val'] = [modality_info['train'][idx] for idx in val_idx]
-    data_splits['train'] = [data_splits['train'][idx] for idx in train_idx]
-    modality_info['train'] = [modality_info['train'][idx] for idx in train_idx]
+    train_split, val_split = two_way_split(
+        data_splits['train'], modality_info['train'], val_ratio=val_ratio)
+    data_splits['train'] = train_split[0]
+    modality_info['train'] = train_split[1]
+    data_splits['val'] = val_split[0]
+    modality_info['val'] = val_split[1]
 
     return data_splits, modality_info, promise_labels
