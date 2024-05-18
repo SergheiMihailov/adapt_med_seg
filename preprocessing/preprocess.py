@@ -88,7 +88,7 @@ def run(args: Namespace):
         data_splits, modality_info, classes = parse_msd(data_root=args.dataset_root,
                                                         test_ratio=args.test_ratio,
                                                         val_ratio=args.val_ratio,
-                                                        dataset_name=dataset_name[1])
+                                                        dataset=dataset_name[1])
     elif args.dataset_type == 'T2W-MRI':
         data_splits, modality_info, classes = parse_t2w_mri(data_root=args.dataset_root,
                                                             test_ratio=args.test_ratio,

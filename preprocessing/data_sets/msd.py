@@ -135,10 +135,8 @@ def parse_msd(data_root: str,
     for img, lab in zip(images_list, labels_list):
         img_id = os.path.basename(img).split('.')[0][len(prefix):]
         data_list.append((str(img_id),
-                          load_callback(msd_image_loader,
-                                        os.path.join(images_dir, img)),
-                          load_callback(msd_label_loader,
-                                        os.path.join(labels_dir, lab))))
+                          load_callback(msd_image_loader, img),
+                          load_callback(msd_label_loader, lab)))
         modality_list.append('1') # MRI
 
     data_splits = {key: [] for key in SPLIT_NAMES}

@@ -84,16 +84,16 @@ def parse_t2w_mri(data_root: str,
     prefix = 'P_'
     data_list = []
     modality_list = []
-    for image_path in sorted(glob(image_dir)):
+    for image_path in sorted(glob(os.path.join(image_dir, f'{prefix}???.tiff'))):
         # format is P_???.tiff
         # label format is P_???_SEG.tiff
         label_path = os.path.join(label_dir, os.path.basename(image_path).replace('.tiff', '_SEG.tiff'))
-        img_id = int(os.path.basename(image_path).replace('.tiff', '')[len(prefix):])
+        img_id = os.path.basename(image_path).replace('.tiff', '')[len(prefix):]
         if not os.path.exists(label_path):
             print(f'Could not find corresponding label for {image_path}')
             continue
-        image_loader = load_callback(image_path, t2w_mri_image_loader)
-        label_loader = load_callback(label_path, t2w_mri_label_loader)
+        image_loader = load_callback(t2w_mri_image_loader, image_path)
+        label_loader = load_callback(t2w_mri_label_loader, label_path)
         data_list.append((img_id, image_loader, label_loader))
         modality_list.append('1')
     # create the splits

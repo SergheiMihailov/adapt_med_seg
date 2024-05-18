@@ -113,7 +113,7 @@ def parse_promise12(data_root: str,
             label_path = image_path.replace('.mhd', f'{mask_postfix}.mhd')
             image_load = load_callback(promise12_image_loader, image_path)
             label_load = load_callback(promise12_label_loader, label_path)
-            data_splits[split].append((index, image_load, label_load))
+            data_splits[split].append((str(index), image_load, label_load))
             modality_info[split].append('1') # MRI
             index += 1
     # split the training data into train and validation

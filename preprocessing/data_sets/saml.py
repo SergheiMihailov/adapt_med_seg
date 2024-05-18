@@ -85,9 +85,9 @@ def parse_saml(data_path: str,
         if not os.path.exists(label_path):
             print(f'Label file {label_path} not found.')
             continue
-        image_loader = load_callback(image_path, saml_image_loader)
-        label_loader = load_callback(label_path, saml_label_loader)
-        data_list.append((idx, image_loader, label_loader))
+        image_loader = load_callback(saml_image_loader, image_path)
+        label_loader = load_callback(saml_label_loader, label_path)
+        data_list.append((str(idx), image_loader, label_loader))
         modality_list.append('1')
 
     # split the data
