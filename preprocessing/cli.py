@@ -63,7 +63,7 @@ def parse_arguments():
                         action='store',
                         help='''Type of dataset (AMOS, CHAOS, ...)
                                 Both the splits and the modality of the images will be inferred from the metadata''',
-                        choices=['AMOS', 'CHAOS'])
+                        choices=['AMOS', 'CHAOS', 'PROMISE12', 'MSD_Prostate', 'T2W-MRI', 'SAML'])
 
     args = parser.parse_args()
     # concatenate the classes, if they are parsed as a list of characters

@@ -4,28 +4,17 @@ import os
 import json
 import multiprocessing
 from argparse import Namespace
-from monai.transforms import (
-    EnsureChannelFirstd,
-    Compose,
-    LoadImaged,
-    Orientationd,
-)
 from glob import glob
 
 from cli import parse_arguments
-from splits import (SPLIT_NAMES, MODALITY_MAPPING,
-                    parse_amos, parse_chaos)
 from process_modality import process_ct_image, process_mr_image
-
-# image loader that we use for loading the images
-# supports both nifti and dicom
-img_loader = Compose(
-    [
-        LoadImaged(keys=['image', 'label']),
-        EnsureChannelFirstd(keys=['image', 'label'], channel_dim="no_channel"),
-        # Orientationd(keys=['image', 'label'], axcodes="RAS"),
-    ]
-)
+from util import MODALITY_MAPPING, SPLIT_NAMES
+from data_sets.amos import parse_amos
+from data_sets.chaos import parse_chaos
+from data_sets.promise12 import parse_promise12
+from data_sets.msd import parse_msd
+from data_sets.t2w_mri import parse_t2w_mri
+from data_sets.saml import parse_saml
 
 def preprocess_image(info):
     """
@@ -90,6 +79,24 @@ def run(args: Namespace):
         data_splits, modality_info, classes = parse_chaos(args.dataset_root,
                                                           args.test_ratio,
                                                           args.val_ratio)
+    elif args.dataset_type == 'PROMISE12':
+        data_splits, modality_info, classes = parse_promise12(args.dataset_root, args.val_ratio)
+    elif args.dataset_type.startswith('MSD'):
+        dataset_name = args.dataset_type.split('_')
+        if len(dataset_name) != 2:
+            raise ValueError(f'Invalid dataset name: {args.dataset_type}. Try e.g MSD_Prostate')
+        data_splits, modality_info, classes = parse_msd(data_root=args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio,
+                                                        dataset=dataset_name[1])
+    elif args.dataset_type == 'T2W-MRI':
+        data_splits, modality_info, classes = parse_t2w_mri(data_root=args.dataset_root,
+                                                            test_ratio=args.test_ratio,
+                                                            val_ratio=args.val_ratio)
+    elif args.dataset_type == 'SAML':
+        data_splits, modality_info, classes = parse_saml(args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio)
     else:
         raise ValueError(f'Unknown dataset code: {args.dataset_type}')
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
