@@ -19,7 +19,7 @@ from monai.transforms import (
     ToNumpy
 )
 
-from util import load_callback, SPLIT_NAMES
+from util import load_callback, SPLIT_NAMES, three_way_split
 
 def chaos_data_download(data_root: str) -> str:
     """
@@ -141,27 +141,15 @@ def parse_chaos(data_root: str,
         # append to the splits
         splits_list.append((name, image_load, label_load))
         mod_list.append('0')
-    # create test split
-    test_idx = np.random.choice(len(splits_list), int(
-        test_ratio*len(splits_list)), replace=False)
-    test_idx = set(test_idx)
-    data_splits['test'] = [splits_list[idx] for idx in test_idx]
-    modality_info['test'] = [mod_list[idx] for idx in test_idx]
-    # remove the test splits
-    rest_idx = set(range(len(splits_list))) - test_idx
-    # create val split
-    val_idx = np.random.choice(list(rest_idx), int(
-        val_ratio*len(splits_list)), replace=False)
-    val_idx = set(val_idx)
-    data_splits['val'] = [splits_list[idx] for idx in val_idx]
-    modality_info['val'] = [mod_list[idx] for idx in val_idx]
-    # create train split
-    train_idx = rest_idx - val_idx
-    data_splits['train'] = [splits_list[idx] for idx in train_idx]
-    modality_info['train'] = [mod_list[idx] for idx in train_idx]
-
-    splits_list.clear()
-    mod_list.clear()
+    # split the data
+    train_split, val_split, test_split = three_way_split(
+        splits_list, mod_list, test_ratio=test_ratio, val_ratio=val_ratio)
+    data_splits['train'] = train_split[0]
+    modality_info['train'] = train_split[1]
+    data_splits['val'] = val_split[0]
+    modality_info['val'] = val_split[1]
+    data_splits['test'] = test_split[0]
+    modality_info['test'] = test_split[1]
 
     ###########
     # process MRI data
@@ -197,29 +185,14 @@ def parse_chaos(data_root: str,
                              label_loader_dual),
                             (f'mr_{idx}_spir', image_loader_spir, label_loader_spir)))
         mod_list.append(('1', '1', '1'))
-    # create test split
-    test_idx = np.random.choice(len(splits_list), int(
-        test_ratio*len(splits_list)), replace=False)
-    test_idx = set(test_idx)
-    data_splits['test'].extend(
-        [split for idx in test_idx for split in splits_list[idx]])
-    modality_info['test'].extend(
-        [mod for idx in test_idx for mod in mod_list[idx]])
-    # remove the test splits
-    rest_idx = set(range(len(splits_list))) - test_idx
-    # create val split
-    val_idx = np.random.choice(list(rest_idx), int(
-        val_ratio*len(splits_list)), replace=False)
-    val_idx = set(val_idx)
-    data_splits['val'].extend(
-        [split for idx in val_idx for split in splits_list[idx]])
-    modality_info['val'].extend(
-        [mod for idx in val_idx for mod in mod_list[idx]])
-    # create train split
-    train_idx = rest_idx - val_idx
-    data_splits['train'].extend(
-        [split for idx in train_idx for split in splits_list[idx]])
-    modality_info['train'].extend(
-        [mod for idx in train_idx for mod in mod_list[idx]])
+    # split the data
+    train_split, val_split, test_split = three_way_split(
+        splits_list, mod_list, test_ratio=test_ratio, val_ratio=val_ratio)
+    data_splits['train'] += train_split[0]
+    modality_info['train'] += train_split[1]
+    data_splits['val'] += val_split[0]
+    modality_info['val'] += val_split[1]
+    data_splits['test'] += test_split[0]
+    modality_info['test'] += test_split[1]
 
     return data_splits, modality_info, chaos_classes

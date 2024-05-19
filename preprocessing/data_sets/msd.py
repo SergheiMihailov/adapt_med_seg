@@ -23,7 +23,7 @@ from monai.transforms import (
     Compose
 )
 
-from util import load_callback, SPLIT_NAMES
+from util import load_callback, SPLIT_NAMES, three_way_split
 
 SUPPORTED_DATASETS = ['prostate']
 DATASET_URLS = {
@@ -135,31 +135,21 @@ def parse_msd(data_root: str,
     for img, lab in zip(images_list, labels_list):
         img_id = os.path.basename(img).split('.')[0][len(prefix):]
         data_list.append((str(img_id),
-                          load_callback(msd_image_loader,
-                                        os.path.join(images_dir, img)),
-                          load_callback(msd_label_loader,
-                                        os.path.join(labels_dir, lab))))
+                          load_callback(msd_image_loader, img),
+                          load_callback(msd_label_loader, lab)))
         modality_list.append('1') # MRI
 
     data_splits = {key: [] for key in SPLIT_NAMES}
     modality_info = {key: [] for key in SPLIT_NAMES}
 
-    test_indices = np.random.choice(len(data_list),
-                                    int(test_ratio*len(data_list)), replace=False)
-    test_indices = set(test_indices)
-    data_splits['test'] = [data_list[idx] for idx in test_indices]
-    modality_info['test'] = [modality_list[idx] for idx in test_indices]
-    rest_indices = set(range(len(data_list)))-test_indices
-    val_indices = np.random.choice(list(rest_indices),
-                                   int(val_ratio*len(data_list)), replace=False)
-    data_splits['val'] = [data_list[idx] for idx in val_indices]
-    modality_info['val'] = [modality_list[idx] for idx in val_indices]
-    # remove the validation samples from the training set
-    train_indices = rest_indices-val_indices
-    data_splits['train'] = [data_splits['train'][idx]
-                            for idx in train_indices]
-    modality_info['train'] = [modality_info['train'][idx]
-                              for idx in train_indices]
+    train_split, val_split, test_split = three_way_split(
+        data_list, modality_list, test_ratio=test_ratio, val_ratio=val_ratio)
+    data_splits['train'] = train_split[0]
+    modality_info['train'] = train_split[1]
+    data_splits['val'] = val_split[0]
+    modality_info['val'] = val_split[1]
+    data_splits['test'] = test_split[0]
+    modality_info['test'] = test_split[1]
 
     # obtain list of labels and corr. classes
     classes = DATASET_LABELS[dataset]
