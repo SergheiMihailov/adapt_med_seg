@@ -6,9 +6,11 @@ from SegVol.model_segvol_single import (
     SegVolProcessor,
 )
 
-class SegVolBase(SegVolModel):
+from peft import LoraConfig, get_peft_model
+
+class SegVolContextPrior(SegVolModel):
     """
-    Baseline model for SegVol.
+    SegVol model + using context priors as suggested in http://arxiv.org/abs/2103.00020
     """
 
     def __init__(self, config: SegVolConfig):
@@ -17,6 +19,8 @@ class SegVolBase(SegVolModel):
         self.model = AutoModel.from_pretrained(
             "BAAI/SegVol", trust_remote_code=True, test_mode=config.test_mode
         ).model
+
+        print(f"keys: {self.model.keys()}")
 
         clip_tokenizer = AutoTokenizer.from_pretrained("BAAI/SegVol")
         self.model.text_encoder.tokenizer = clip_tokenizer

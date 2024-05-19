@@ -8,8 +8,6 @@ import torch
 from torch.utils.data import DataLoader, Dataset, Subset
 
 from SegVol.model_segvol_single import SegVolProcessor
-from adapt_med_seg.utils.download_m3d_seg_dataset import download_m3d_seg_dataset
-from constants import DATASETS_DIR
 
 
 @dataclass
@@ -23,8 +21,12 @@ class DataItem:
 def data_item_to_device(data_item: DataItem, device: str):
     data_item["image"] = data_item["image"].to(device=device)
     data_item["label"] = data_item["label"].to(device=device)
-    data_item["zoom_out_image"] = data_item["zoom_out_image"].to(device=device)
-    data_item["zoom_out_label"] = data_item["zoom_out_label"].to(device=device)
+
+    if "zoom_out_image" in data_item:
+        data_item["zoom_out_image"] = data_item["zoom_out_image"].to(device=device)
+
+    if "zoom_out_label" in data_item:
+        data_item["zoom_out_label"] = data_item["zoom_out_label"].to(device=device)
     return data_item
 
 

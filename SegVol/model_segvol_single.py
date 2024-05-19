@@ -75,6 +75,15 @@ class SegVolModel(PreTrainedModel):
         volume_shape = image[0][0].shape
 
         with torch.no_grad():
+            print(f"Torch types of all of the below:\n\
+                image: {image.dtype}\n\
+                zoomed_image: {zoomed_image.dtype}\n\
+                text_prompt: {text_prompt.dtype}\n\
+                bbox_prompt: {bbox_prompt.dtype}\n\
+                point_prompt: {point_prompt.dtype}\n\
+                bbox_prompt_map: {bbox_prompt_map.dtype}\n\
+                point_prompt_map: {point_prompt_map.dtype}")
+
             logits_global_single = self.model(
                 zoomed_image, text=text_prompt, boxes=bbox_prompt, points=point_prompt
             )
