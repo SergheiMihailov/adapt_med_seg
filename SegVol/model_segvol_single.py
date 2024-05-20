@@ -52,6 +52,7 @@ class SegVolModel(PreTrainedModel):
         bbox_prompt_group=None,
         point_prompt_group=None,
         use_zoom=True,
+        modality=None
     ):
         device = image.device
         assert (
@@ -75,17 +76,17 @@ class SegVolModel(PreTrainedModel):
         volume_shape = image[0][0].shape
 
         with torch.no_grad():
-            print(f"Torch types of all of the below:\n\
-                image: {image.dtype}\n\
-                zoomed_image: {zoomed_image.dtype}\n\
-                text_prompt: {text_prompt.dtype}\n\
-                bbox_prompt: {bbox_prompt.dtype}\n\
-                point_prompt: {point_prompt.dtype}\n\
-                bbox_prompt_map: {bbox_prompt_map.dtype}\n\
-                point_prompt_map: {point_prompt_map.dtype}")
+            # print(f"Torch types of all of the below:\n\
+            #     image: {image.dtype}\n\
+            #     zoomed_image: {zoomed_image.dtype}\n\
+            #     text_prompt: {text_prompt.dtype}\n\
+            #     bbox_prompt: {bbox_prompt.dtype}\n\
+            #     point_prompt: {point_prompt.dtype}\n\
+            #     bbox_prompt_map: {bbox_prompt_map.dtype}\n\
+            #     point_prompt_map: {point_prompt_map.dtype}")
 
             logits_global_single = self.model(
-                zoomed_image, text=text_prompt, boxes=bbox_prompt, points=point_prompt
+                zoomed_image, text=text_prompt, boxes=bbox_prompt, points=point_prompt, modality=modality
             )
         logits_global_single = F.interpolate(
             logits_global_single.cpu(), size=volume_shape, mode="nearest"
@@ -149,6 +150,7 @@ class SegVolModel(PreTrainedModel):
                 text=text_prompt,
                 use_box=bbox_prompt is not None,
                 use_point=point_prompt is not None,
+                modality=modality
             )
             logits_single_cropped = logits_single_cropped.cpu().squeeze()
         logits_global_single[
@@ -156,7 +158,7 @@ class SegVolModel(PreTrainedModel):
         ] = logits_single_cropped
         return logits_global_single
 
-    def forward_train(self, image, train_organs, train_labels):
+    def forward_train(self, image, train_organs, train_labels, modality):
         loss = self.model(
             image,
             text=None,
@@ -164,6 +166,7 @@ class SegVolModel(PreTrainedModel):
             points=None,
             train_organs=train_organs,
             train_labels=train_labels,
+            modality=modality,
         )
         return loss
 
@@ -176,10 +179,11 @@ class SegVolModel(PreTrainedModel):
                 kwargs["bbox_prompt_group"],
                 kwargs["point_prompt_group"],
                 kwargs["use_zoom"],
+                kwargs["modality"]
             )
         else:
             return self.forward_train(
-                kwargs["image"], kwargs["train_organs"], kwargs["train_labels"]
+                kwargs["image"], kwargs["train_organs"], kwargs["train_labels"], kwargs["modality"]
             )
 
 
@@ -546,7 +550,7 @@ class SegVol(nn.Module):
         )
         # test mode
         if self.test_mode:
-            return self.forward_decoder(image_embedding, img_shape, text, boxes, points)
+            return self.forward_decoder(image_embedding, img_shape, text, boxes, points, kwargs["modality"])
 
         # train mode
         ## sl
@@ -556,13 +560,14 @@ class SegVol(nn.Module):
             img_shape,
             kwargs["train_organs"],
             kwargs["train_labels"],
+            kwargs["modality"]
         )
         ## ssl
         # ssl_loss = self.unsupervised_forward(image, image_embedding, kwargs['pseudo_seg_cleaned'], img_shape)
         return sl_loss
 
     def forward_decoder(
-        self, image_embedding, img_shape, text=None, boxes=None, points=None
+        self, image_embedding, img_shape, text=None, boxes=None, points=None, modality=None
     ):
         device = image_embedding.device
         with torch.no_grad():
@@ -570,7 +575,7 @@ class SegVol(nn.Module):
                 if len(boxes.shape) == 2:
                     boxes = boxes[:, None, :]  # (B, 1, 6)
             if text is not None:
-                text_embedding = self.text_encoder(text, device)  # (B, 768)
+                text_embedding = self.text_encoder(text, modality, device)  # (B, 768)
             else:
                 text_embedding = None
         sparse_embeddings, dense_embeddings = self.prompt_encoder(
@@ -595,7 +600,7 @@ class SegVol(nn.Module):
         return logits
 
     def supervised_forward(
-        self, image, image_embedding, img_shape, training_organs, train_labels
+        self, image, image_embedding, img_shape, training_organs, train_labels, modality = None
     ):
         device = image_embedding.device
         iter_points, iter_bboxes, iter_organs = self.build_prompt_label(
@@ -614,7 +619,7 @@ class SegVol(nn.Module):
         for prompt in prompt_options:
             bboxes, points, organs = prompt
             logits = self.forward_decoder(
-                image_embedding, img_shape, text=organs, boxes=bboxes, points=points
+                image_embedding, img_shape, text=organs, boxes=bboxes, points=points, modality=modality
             )
             # cal loss
             sl_loss_dice = self.dice_loss.forward(
@@ -1011,6 +1016,7 @@ def sliding_window_inference(
     text = kwargs["text"]
     use_box = kwargs["use_box"]
     use_point = kwargs["use_point"]
+    modality = kwargs["modality"] # CT or MR
     assert not (use_box and use_point)
     compute_dtype = inputs.dtype
     num_spatial_dims = len(inputs.shape) - 2

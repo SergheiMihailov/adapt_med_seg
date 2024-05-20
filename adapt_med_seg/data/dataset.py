@@ -49,20 +49,22 @@ class MedSegDataset(Dataset):
     def name(self) -> str:
         return self._name
 
-    def __getitem__(self, idx) -> tuple[DataItem, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx) -> tuple[DataItem, torch.Tensor, str]:
         ct_path = self._ct_paths[idx]
         gt_path = self._gt_paths[idx]
-        modality = self._case_modality[idx]
+        modality = str(self._case_modality[idx])
 
         ct_npy, gt_npy = self._processor.load_uniseg_case(ct_path, gt_path)
-        modality_tensor = torch.tensor([modality])
-
+        
+        ct_npy = ct_npy.astype("float32")
+        gt_npy = gt_npy.astype("int64")
+        
         if self.train and idx not in getattr(self, "_test_indices", []):
             data_item = self._processor.train_transform(ct_npy, gt_npy)
         else:
             data_item = self._processor.zoom_transform(ct_npy, gt_npy)
 
-        return data_item, gt_npy, modality_tensor
+        return data_item, gt_npy, modality
 
     def __len__(self):
         return len(self._ct_paths)
@@ -181,9 +183,9 @@ class MedSegDataset(Dataset):
                 if case_["modality"] not in mod_ids:
                     continue
                 self._ct_paths.append(
-                    os.path.join(self.dataset_path, case_["image"]))
+                    os.path.join(dataset_path, case_["image"]))
                 self._gt_paths.append(
-                    os.path.join(self.dataset_path, case_["label"]))
+                    os.path.join(dataset_path, case_["label"]))
                 self._case_modality.append(int(case_["modality"]))
                 self.data_idxs[split].append(base + idx)
                 idx += 1
