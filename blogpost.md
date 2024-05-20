@@ -89,14 +89,14 @@ Medical segmentation models focus predominantly on fine-tuning to specific modal
 
 SegVol | Hermes
 :------:|:------:
-![SegVol](SegVol.png) | ![Hermes](Hermes.png)
+![SegVol](./assets/SegVol.png) | ![Hermes](./assets/Hermes.png)
 
 Hermes has been shown to be compatible with existing backbones, including ViT, as used in SegVol. SegVol builds on top of Segment Anything (SAM), with image, spatial and semantic embeddings fused and fed to the mask decoder. In case of Hermes, the reference architecture is similar: an image encoder, followed by fusion of image embeddings and context prior tokens, and then followed by a mask decoder.
 
 **Proposed approach to applying SegVol to Hermes:**
 We apply the approach taken by Hermes to the pre-trained SegVol model. Following the approach from the Hermes paper, we introduce context priors, a posterior prototype MLP, and add adapters to image encoder, fusion encoder and mask decoder.
 Currently, we are still experimenting with the precise architecture that would yield the best results. However, conceptually it looks as follows:
-![AdaptMedSeg](adapt_med_seg.png)
+![AdaptMedSeg](./assets/adapt_med_seg.png)
 
 ### Datasets
 
