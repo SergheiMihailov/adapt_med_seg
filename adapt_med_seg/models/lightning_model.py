@@ -2,14 +2,10 @@ from dataclasses import dataclass, field
 from typing import Any
 from SegVol.model_segvol_single import SegVolConfig
 from adapt_med_seg.models import MODELS
-from pytorch_lightning import LightningModule, Trainer
-from torch.utils.data import DataLoader
-import torch.optim as optim
-import torch.nn.functional as F
+from pytorch_lightning import LightningModule
 import torch
 
 from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
-from adapt_med_seg.pipelines.utils.initializers import intialize_model
 from adapt_med_seg.metrics import dice_score
 
 @dataclass
@@ -47,21 +43,9 @@ class SegVolLightning(LightningModule):
         self._use_wandb = train_args.use_wandb
 
         config = SegVolConfig(test_mode=train_args.test_mode)
-        self._model = intialize_model(
-            model_name=train_args.model_name,
-            config=config,
-            device=train_args.device
-        ) #MODELS[self.model_name](config)
-
-        # self._dataset = MedSegDataset(
-        #     dataset_path=self.dataset_path,
-        #     processor=self._model.processor,
-        #     modalities=self.modalities,
-        #     train=False,
-        # )
+        self._model = MODELS[train_args.model_name](config)
 
         self.processor = self._model.processor
-
         self.validation_step_outputs = []
         
     def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
