@@ -5,9 +5,22 @@ import torch
 
 from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
 from adapt_med_seg.metrics import dice_score
+from adapt_med_seg.models.segvol_base import SegVolBase
+from adapt_med_seg.models.segvol_lora import SegVolLoRA
+
+def get_model(model_name: str, config, **kwargs):
+    
+    match model_name:
+        case "segvol_baseline":
+            model = SegVolBase(config)
+        case "segvol_lora":
+            model = SegVolLoRA(config, **kwargs)
+        case _:
+            raise ValueError(f"Model {model_name} not found.")
+    return model
 
 class SegVolLightning(LightningModule):
-    def __init__(self, model_name: str, modalities: list[str], use_wandb: bool, test_mode: bool = False):
+    def __init__(self, model_name: str, modalities: list[str], use_wandb: bool, test_mode: bool = False, **kwargs):
         super().__init__()
         self.save_hyperparameters()
         
@@ -16,7 +29,7 @@ class SegVolLightning(LightningModule):
         self._use_wandb = use_wandb
 
         config = SegVolConfig(test_mode=test_mode)
-        self._model = MODELS[model_name](config)
+        self._model = get_model(model_name, config, **kwargs)
 
         self.processor = self._model.processor
         self.validation_step_outputs = []

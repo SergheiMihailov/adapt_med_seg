@@ -42,6 +42,10 @@ def main():
     parser.add_argument("--bf16", action="store_true")
     parser.add_argument("--accumulate_grad_batches", type=int, default=1,
                         help="Number of batches to accumulate before backprop. In theory, this could reduce training time and simulate larger batches (which we can't do with the current models).")
+    parser.add_argument("--lora_r", type=int, default=8)
+    parser.add_argument("--lora_alpha", type=int, default=8)
+    parser.add_argument("--lora_dropout", type=float, default=0.0)
+    parser.add_argument("--target_modules", type=list[str], default=None, nargs="*")
     args = parser.parse_args()
 
     seed_everything(args.seed)
