@@ -6,8 +6,6 @@ from SegVol.model_segvol_single import (
     SegVolProcessor,
 )
 
-from peft import LoraConfig, get_peft_model
-
 class SegVolContextPrior(SegVolModel):
     """
     SegVol model + using context priors as suggested in http://arxiv.org/abs/2103.00020
