@@ -49,7 +49,7 @@ def main():
     args = parser.parse_args()
 
     seed_everything(args.seed)
-    train_pipeline = SegVolLightning(
+    model = SegVolLightning(
         model_name=args.model_name,
         modalities=args.modalities,
         use_wandb=args.use_wandb,
@@ -57,13 +57,13 @@ def main():
     )
 
     _dataset = MedSegDataset(
-        processor=train_pipeline._model.processor,
+        processor=model._model.processor,
         dataset_path=args.dataset_path,
         modalities=args.modalities,
         train=True,
     )
 
-    train_pipeline.set_dataset(_dataset, cls_idx=args.cls_idx)
+    model.set_dataset(_dataset, cls_idx=args.cls_idx)
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
 
     trainer = Trainer(
@@ -74,18 +74,18 @@ def main():
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
         accumulate_grad_batches=args.accumulate_grad_batches,
     )
-    trainer.fit(train_pipeline, train_dataloader, val_dataloader)
+    trainer.fit(model, train_dataloader, val_dataloader)
 
     if args.test_at_end:
         # Reinitialize the dataset for testing
         test_dataloader = MedSegDataset(
-            processor=train_pipeline._model.processor,
+            processor=model._model.processor,
             dataset_path=args.dataset_path,
             modalities=args.modalities,
             train=False,
         )
-        train_pipeline.set_dataset(test_dataloader, cls_idx=args.cls_idx)
-        trainer.test(train_pipeline, test_dataloader)
+        model.set_dataset(test_dataloader, cls_idx=args.cls_idx)
+        trainer.test(model, test_dataloader)
 
 
 if __name__ == "__main__":
