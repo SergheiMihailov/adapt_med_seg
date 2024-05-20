@@ -1,5 +1,3 @@
-from dataclasses import dataclass, field
-from typing import Any
 from SegVol.model_segvol_single import SegVolConfig
 from adapt_med_seg.models import MODELS
 from pytorch_lightning import LightningModule
@@ -8,46 +6,26 @@ import torch
 from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
 from adapt_med_seg.metrics import dice_score
 
-@dataclass
-class TrainingArgs:
-    use_wandb: bool = False
-    model_name: str = "segvol_baseline"
-    dataset_path: str = None,
-    modalities: str = "CT",
-    device: str = "cuda"
-    batch_size: int = 1
-    cls_idx: int = 0
-    # text_prompt_template: str = "a photo of {}."
-    seed: int = 42
-    training_epochs: int = 10
-    optimizer: Any = None
-    test_mode: bool = False
-
-    def to_dict(self) -> dict[str, Any]:
-        return self.__dict__
-
-
 class SegVolLightning(LightningModule):
-    def __init__(self, train_args: TrainingArgs):
+    def __init__(self, model_name: str, modalities: list[str], use_wandb: bool, test_mode: bool = False):
         super().__init__()
         self.save_hyperparameters()
         
-        self.train_args = train_args
+        self.model_name = model_name
+        self.modalities = modalities
+        self._use_wandb = use_wandb
 
-        self.model_name = train_args.model_name
-        self.dataset_path = train_args.dataset_path
-        self.modalities = train_args.modalities
-
-        self._cls_idx = train_args.cls_idx
-        self._batch_size = train_args.batch_size
-        self._use_wandb = train_args.use_wandb
-
-        config = SegVolConfig(test_mode=train_args.test_mode)
-        self._model = MODELS[train_args.model_name](config)
+        config = SegVolConfig(test_mode=test_mode)
+        self._model = MODELS[model_name](config)
 
         self.processor = self._model.processor
         self.validation_step_outputs = []
-        
+    
+    def on_fit_start(self) -> None:
+        if not hasattr(self, "_dataset") or not hasattr(self, "_cls_idx"):
+            raise ValueError("Dataset not set. Call set_dataset() before training.")
+        return super().on_fit_start()    
+    
     def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
         """Set the dataset for the training pipeline. This method should be called before training. If used in evaluation, you must supply the class index."""
         self._dataset = dataset
@@ -78,7 +56,7 @@ class SegVolLightning(LightningModule):
             else:
                 loss = loss + _loss
 
-        self.log("train_loss", loss.item())
+        self.log("train_loss", loss.item(), prog_bar=True, on_step=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -122,22 +100,16 @@ class SegVolLightning(LightningModule):
         labels = data_item["label"][0][self._cls_idx]
 
         score = dice_score(preds, labels)
-        self.validation_step_outputs.append(score)
+        self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
         return score
 
     def test_step(self, batch, batch_idx):
+        # TODO: Implement test_step and inference_step, additionally, wandb logging
         return self.validation_step(batch, batch_idx)
 
     def on_train_epoch_start(self):
         super().on_train_epoch_start()
         self.train()
-
-    def on_validation_epoch_end(self):
-        self.log(
-            "val_dice_score",
-            sum(self.validation_step_outputs) / len(self.validation_step_outputs),
-        )
-        self.validation_step_outputs.clear()
 
     def configure_optimizers(self):
         return torch.optim.Adam(
