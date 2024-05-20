@@ -13,15 +13,6 @@ class SegVolMoE(SegVolBase, PreTrainedModel):
     def __init__(self, config: SegVolConfig, r=8, alpha=8, dropout=0.0):
         super().__init__(config)
 
-        self.model = AutoModel.from_pretrained(
-            "BAAI/SegVol", trust_remote_code=True, test_mode=config.test_mode
-        ).model
-
-        clip_tokenizer = AutoTokenizer.from_pretrained("BAAI/SegVol")
-        self.model.text_encoder.tokenizer = clip_tokenizer
-
-        self.processor = SegVolProcessor(spatial_size=self.config.spatial_size)
-
         peft_config = LoraConfig(
             target_modules=["out_proj", "qkv", "linear1", "linear2"], # all ViT Linear layers
             inference_mode=config.test_mode,
