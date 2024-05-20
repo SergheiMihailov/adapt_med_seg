@@ -1,3 +1,4 @@
+from itertools import accumulate
 from adapt_med_seg.data.dataset import MedSegDataset
 from adapt_med_seg.models.lightning_model import SegVolLightning
 from pytorch_lightning import Trainer, seed_everything
@@ -39,6 +40,8 @@ def main():
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--fp16", action="store_true")
     parser.add_argument("--bf16", action="store_true")
+    parser.add_argument("--accumulate_grad_batches", type=int, default=1,
+                        help="Number of batches to accumulate before backprop. In theory, this could reduce training time and simulate larger batches (which we can't do with the current models).")
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -65,6 +68,7 @@ def main():
         # deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
+        accumulate_grad_batches=args.accumulate_grad_batches,
     )
     trainer.fit(train_pipeline, train_dataloader, val_dataloader)
 
