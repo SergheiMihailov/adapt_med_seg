@@ -1,6 +1,6 @@
 from typing import Mapping, Tuple, Type
 import torch
-from peft import PeftConfig, get_peft_model, PeftModel
+from peft import LoraConfig, get_peft_model, PeftModel
 import re
 import logging
 from torch import Tensor, nn
@@ -15,12 +15,6 @@ from SegVol.model_segvol_single import (
 )
 from dataclasses import dataclass
 logger = logging.getLogger(__name__)
-
-@dataclass
-class ContextPriorPoolConfig:
-    tasks: list[str]
-    modalities: list[str]
-    embed_dim: int = 64
 
 class ContextPriorPool:
     def __init__(self, tasks: list[str], modalities: list[str], embed_dim: int = 64):
@@ -147,8 +141,7 @@ class SegVolContextPrior(SegVolModel):
     """
 
     def __init__(self, config: SegVolConfig,
-                 context_prior_pool_config: ContextPriorPoolConfig,
-                 peft_config: PeftConfig):
+                 **kwargs):
         super().__init__(config)
 
         self.model: SegVol = AutoModel.from_pretrained(
@@ -164,9 +157,9 @@ class SegVolContextPrior(SegVolModel):
 
         # Context prior:
         self.context_prior_pool = ContextPriorPool(
-            tasks=context_prior_pool_config.tasks,
-            modalities=context_prior_pool_config.modalities,
-            embed_dim=context_prior_pool_config.embed_dim,
+            tasks=kwargs.get('tasks', []),
+            modalities=kwargs.get('modalities', []),
+            embed_dim=768,
         )
         # initialize a pooled prompt encoder and replace the original one
         # while keeping the pre-trained weights
@@ -187,6 +180,13 @@ class SegVolContextPrior(SegVolModel):
         self.model.prompt_encoder = pooled_prompt_encoder
 
         # PEFT
+        peft_config = LoraConfig(
+            target_modules=kwargs.get('target_modules', ["q_proj", "v_proj"]),
+            inference_mode=config.test_mode,
+            r=kwargs.get('lora_r', 8),
+            lora_alpha=kwargs.get('lora_alpha', 8),
+            lora_dropout=kwargs.get('lora_dropout', 0.0)
+        )
         self.model: PeftModel = get_peft_model(
             self.model, peft_config
         )

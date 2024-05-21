@@ -45,7 +45,9 @@ def main():
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=8)
     parser.add_argument("--lora_dropout", type=float, default=0.0)
-    parser.add_argument("--target_modules", type=list[str], default=None, nargs="*")
+    parser.add_argument("--target_modules", type=list[str], default=None, nargs="+")
+    parser.add_argument("--tasks", type=list[str], default=[], nargs="*")
+    parser.add_argument("--modalities", type=list[str], default=["MRI", "CT"], nargs="+")
     args = parser.parse_args()
 
     seed_everything(args.seed)
@@ -54,6 +56,7 @@ def main():
         modalities=args.modalities,
         use_wandb=args.use_wandb,
         test_mode=False,
+        **vars(args),
     )
 
     _dataset = MedSegDataset(

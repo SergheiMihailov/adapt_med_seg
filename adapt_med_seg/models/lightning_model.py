@@ -7,6 +7,7 @@ from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
 from adapt_med_seg.metrics import dice_score
 from adapt_med_seg.models.segvol_base import SegVolBase
 from adapt_med_seg.models.segvol_lora import SegVolLoRA
+from adapt_med_seg.models.segvol_context_prior import SegVolContextPrior
 
 def get_model(model_name: str, config, **kwargs):
     
@@ -15,6 +16,8 @@ def get_model(model_name: str, config, **kwargs):
             model = SegVolBase(config)
         case "segvol_lora":
             model = SegVolLoRA(config, **kwargs)
+        case "segvol_context_prior":
+            model = SegVolContextPrior(config, **kwargs)
         case _:
             raise ValueError(f"Model {model_name} not found.")
     return model
