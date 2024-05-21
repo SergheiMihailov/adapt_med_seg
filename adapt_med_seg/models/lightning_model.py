@@ -109,8 +109,8 @@ class SegVolLightning(LightningModule):
             modality=modality,
         )
 
-        preds = pred[0][0]
-        labels = data_item["label"][0][self._cls_idx]
+        preds = pred[0][0].to(self.device)
+        labels = data_item["label"][0][self._cls_idx].to(self.device)
 
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
@@ -125,6 +125,11 @@ class SegVolLightning(LightningModule):
         self.train()
 
     def configure_optimizers(self):
-        return torch.optim.Adam(
-            filter(lambda param: param.requires_grad, self.parameters()), lr=1e-4
+        lr = getattr(self.hparams, "lr", 5e-5)
+        betas = getattr(self.hparams, "betas", (0.9, 0.999))
+        eps = getattr(self.hparams, "eps", 1e-8)
+        optimizer = torch.optim.AdamW(
+            filter(lambda param: param.requires_grad, self.parameters()), lr=lr, betas=betas, eps=eps
         )
+        # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+        return optimizer

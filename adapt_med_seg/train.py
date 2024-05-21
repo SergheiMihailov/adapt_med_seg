@@ -1,9 +1,8 @@
-from itertools import accumulate
 from adapt_med_seg.data.dataset import MedSegDataset
 from adapt_med_seg.models.lightning_model import SegVolLightning
-from pytorch_lightning import Trainer, seed_everything
+from lightning.pytorch import Trainer, seed_everything
 import argparse
-
+from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
 
 def main():
     parser = argparse.ArgumentParser()
@@ -46,7 +45,15 @@ def main():
     parser.add_argument("--lora_alpha", type=int, default=8)
     parser.add_argument("--lora_dropout", type=float, default=0.0)
     parser.add_argument("--target_modules", type=list[str], default=None, nargs="*")
+    parser.add_argument("--log_dir", type=str, default="logs")
+    parser.add_argument("--wandb_project", type=str, default="dl2_g33")
+    parser.add_argument("--lr", "--learning_rate", type=float, default=5e-5)
+    parser.add_argument("--betas", type=tuple[float, float], default=(0.9, 0.999), nargs=2)
+    parser.add_argument("--eps", type=float, default=1e-8)
+    
+
     args = parser.parse_args()
+    kwargs = vars(args)
 
     seed_everything(args.seed)
     model = SegVolLightning(
@@ -54,6 +61,7 @@ def main():
         modalities=args.modalities,
         use_wandb=args.use_wandb,
         test_mode=False,
+        **kwargs
     )
 
     _dataset = MedSegDataset(
@@ -66,9 +74,15 @@ def main():
     model.set_dataset(_dataset, cls_idx=args.cls_idx)
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
 
+    loggers = [TensorBoardLogger(args.log_dir)]
+    if args.use_wandb:
+        wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
+        loggers.append(wandb_logger)
+
     trainer = Trainer(
         max_epochs=args.epochs,
         accelerator=args.device,
+        logger=loggers,
         # deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
