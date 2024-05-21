@@ -1,5 +1,8 @@
 from typing import Mapping, Tuple, Type
 import torch
+from peft import PeftConfig, get_peft_model, PeftModel
+import re
+import logging
 from torch import Tensor, nn
 from typing_extensions import Self
 from transformers import AutoTokenizer, AutoModel
@@ -11,6 +14,7 @@ from SegVol.model_segvol_single import (
     PromptEncoder as SamPromptEncoder,
 )
 from dataclasses import dataclass
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ContextPriorPoolConfig:
@@ -142,7 +146,9 @@ class SegVolContextPrior(SegVolModel):
     SegVol model + using context priors as suggested in http://arxiv.org/abs/2103.00020
     """
 
-    def __init__(self, config: SegVolConfig, context_prior_pool_config: ContextPriorPoolConfig):
+    def __init__(self, config: SegVolConfig,
+                 context_prior_pool_config: ContextPriorPoolConfig,
+                 peft_config: PeftConfig):
         super().__init__(config)
 
         self.model: SegVol = AutoModel.from_pretrained(
@@ -179,6 +185,12 @@ class SegVolContextPrior(SegVolModel):
         pooled_prompt_encoder.load_from_pretrained(self.model.text_encoder.state_dict())
         # replace the original prompt encoder
         self.model.prompt_encoder = pooled_prompt_encoder
+
+        # PEFT
+        self.model: PeftModel = get_peft_model(
+            self.model, peft_config
+        )
+        logger.debug("SegVolContextPrior initialized.\n%s", self.model)
 
     def eval(self) -> Self:
         self.model.train(False)
