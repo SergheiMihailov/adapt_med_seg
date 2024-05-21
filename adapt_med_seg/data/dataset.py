@@ -49,20 +49,22 @@ class MedSegDataset(Dataset):
     def name(self) -> str:
         return self._name
 
-    def __getitem__(self, idx) -> tuple[DataItem, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx) -> tuple[DataItem, torch.Tensor, str]:
         ct_path = self._ct_paths[idx]
         gt_path = self._gt_paths[idx]
-        modality = self._case_modality[idx]
+        modality = str(self._case_modality[idx])
 
         ct_npy, gt_npy = self._processor.load_uniseg_case(ct_path, gt_path)
-        modality_tensor = torch.tensor([modality])
-
+        
+        ct_npy = ct_npy.astype("float32")
+        gt_npy = gt_npy.astype("int64")
+        
         if self.train and idx not in getattr(self, "_test_indices", []):
             data_item = self._processor.train_transform(ct_npy, gt_npy)
         else:
             data_item = self._processor.zoom_transform(ct_npy, gt_npy)
 
-        return data_item, gt_npy, modality_tensor
+        return data_item, gt_npy, modality
 
     def __len__(self):
         return len(self._ct_paths)
@@ -112,13 +114,19 @@ class MedSegDataset(Dataset):
             depending on the train attribute.
         """
 
+        if not os.path.exists(self.dataset_path):
+            raise FileNotFoundError(f"Dataset path {self.dataset_path} does not exist in directory {os.getcwd()}")
         if os.path.exists(os.path.join(self.dataset_path, "dataset.json")):
             dataset_paths = [os.path.join(self.dataset_path)]
         else:
             dataset_paths = [
-                os.path.dirname(path)
-                for path in glob(os.path.join(self.dataset_path, "**", "dataset.json"))
+                dirpath
+                # use os.walk to get all subdirectories
+                for dirpath, _, files in os.walk(self.dataset_path)
+                for path in files if path == "dataset.json"
             ]
+        if dataset_paths == []:
+            raise FileNotFoundError("No dataset.json found in the dataset folder or any of its subdirectories")
 
         self._modality_id2name = {}
         self._modality_name2id = {}
@@ -181,9 +189,9 @@ class MedSegDataset(Dataset):
                 if case_["modality"] not in mod_ids:
                     continue
                 self._ct_paths.append(
-                    os.path.join(self.dataset_path, case_["image"]))
+                    os.path.join(dataset_path, case_["image"]))
                 self._gt_paths.append(
-                    os.path.join(self.dataset_path, case_["label"]))
+                    os.path.join(dataset_path, case_["label"]))
                 self._case_modality.append(int(case_["modality"]))
                 self.data_idxs[split].append(base + idx)
                 idx += 1
