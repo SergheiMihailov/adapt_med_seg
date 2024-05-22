@@ -16,7 +16,6 @@ def main():
         "--dataset_path",
         type=str,
         default="datasets",
-        nargs="*",
         help="Path to the dataset(s)",
     )
     parser.add_argument(
