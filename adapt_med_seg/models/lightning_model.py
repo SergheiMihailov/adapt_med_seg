@@ -7,22 +7,32 @@ from adapt_med_seg.metrics import dice_score
 from adapt_med_seg.models.segvol_base import SegVolBase
 from adapt_med_seg.models.segvol_lora import SegVolLoRA
 
+
 def get_model(model_name: str, config, **kwargs):
-    
     match model_name:
         case "segvol_baseline":
             model = SegVolBase(config)
         case "segvol_lora":
-            model = SegVolLoRA(config, kwargs["target_modules"], kwargs["lora_r"], kwargs["lora_alpha"], kwargs["lora_dropout"])
+            model = SegVolLoRA(
+                config,
+                kwargs["target_modules"],
+                kwargs["lora_r"],
+                kwargs["lora_alpha"],
+                kwargs["lora_dropout"],
+                kwargs["train_only_vit"],
+            )
         case _:
             raise ValueError(f"Model {model_name} not found.")
     return model
 
+
 class SegVolLightning(LightningModule):
-    def __init__(self, model_name: str, modalities: list[str], test_mode: bool = False, **kwargs):
+    def __init__(
+        self, model_name: str, modalities: list[str], test_mode: bool = False, **kwargs
+    ):
         super().__init__()
         self.save_hyperparameters()
-        
+
         self.model_name = model_name
         self.modalities = modalities
 
@@ -30,12 +40,12 @@ class SegVolLightning(LightningModule):
         self._model = get_model(model_name, config, **kwargs)
 
         self.processor = self._model.processor
-    
+
     def on_fit_start(self) -> None:
         if not hasattr(self, "_dataset") or not hasattr(self, "_cls_idx"):
             raise ValueError("Dataset not set. Call set_dataset() before training.")
-        return super().on_fit_start()    
-    
+        return super().on_fit_start()
+
     def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
         """Set the dataset for the training pipeline. This method should be called before training. If used in evaluation, you must supply the class index."""
         self._dataset = dataset
@@ -126,7 +136,10 @@ class SegVolLightning(LightningModule):
         betas = getattr(self.hparams, "betas", (0.9, 0.999))
         eps = getattr(self.hparams, "eps", 1e-8)
         optimizer = torch.optim.AdamW(
-            filter(lambda param: param.requires_grad, self.parameters()), lr=lr, betas=betas, eps=eps
+            filter(lambda param: param.requires_grad, self.parameters()),
+            lr=lr,
+            betas=betas,
+            eps=eps,
         )
         # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
         return optimizer

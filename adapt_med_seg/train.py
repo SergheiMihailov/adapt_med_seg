@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--lr", "--learning_rate", type=float, default=5e-5)
     parser.add_argument("--betas", type=tuple[float, float], default=(0.9, 0.999), nargs=2)
     parser.add_argument("--eps", type=float, default=1e-8)
+    parser.add_argument("--train_only_vit", action="store_true")
     
 
     args = parser.parse_args()
