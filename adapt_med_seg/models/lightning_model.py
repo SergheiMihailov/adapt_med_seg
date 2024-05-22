@@ -9,8 +9,9 @@ from adapt_med_seg.models.segvol_base import SegVolBase
 from adapt_med_seg.models.segvol_lora import SegVolLoRA
 from adapt_med_seg.models.segvol_context_prior import SegVolContextPrior
 
+
 def get_model(model_name: str, config, **kwargs):
-    
+
     match model_name:
         case "segvol_baseline":
             model = SegVolBase(config)
@@ -22,11 +23,19 @@ def get_model(model_name: str, config, **kwargs):
             raise ValueError(f"Model {model_name} not found.")
     return model
 
+
 class SegVolLightning(LightningModule):
-    def __init__(self, model_name: str, modalities: list[str], use_wandb: bool, test_mode: bool = False, **kwargs):
+    def __init__(
+        self,
+        model_name: str,
+        modalities: list[str],
+        use_wandb: bool,
+        test_mode: bool = False,
+        **kwargs,
+    ):
         super().__init__()
         self.save_hyperparameters()
-        
+
         self.model_name = model_name
         self.modalities = modalities
         self._use_wandb = use_wandb
@@ -36,12 +45,12 @@ class SegVolLightning(LightningModule):
 
         self.processor = self._model.processor
         self.validation_step_outputs = []
-    
+
     def on_fit_start(self) -> None:
         if not hasattr(self, "_dataset") or not hasattr(self, "_cls_idx"):
             raise ValueError("Dataset not set. Call set_dataset() before training.")
-        return super().on_fit_start()    
-    
+        return super().on_fit_start()
+
     def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
         """Set the dataset for the training pipeline. This method should be called before training. If used in evaluation, you must supply the class index."""
         self._dataset = dataset
@@ -115,6 +124,9 @@ class SegVolLightning(LightningModule):
         preds = pred[0][0]
         labels = data_item["label"][0][self._cls_idx]
 
+        preds = preds.to(self.device)
+        labels = labels.to(self.device)
+
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
         return score
@@ -128,6 +140,22 @@ class SegVolLightning(LightningModule):
         self.train()
 
     def configure_optimizers(self):
-        return torch.optim.Adam(
+        optimizer = torch.optim.Adam(
             filter(lambda param: param.requires_grad, self.parameters()), lr=1e-4
+        ) 
+
+
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=0.1,
+            patience=3,
+            verbose=True,
+            cooldown=5,
+            min_lr=1e-7,
         )
+
+        return [optimizer], [{"scheduler": scheduler, "monitor": "train_loss"}]
+
+    def lr_scheduler_step(self, scheduler, metric):
+        scheduler.step(metric)

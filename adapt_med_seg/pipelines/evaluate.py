@@ -60,8 +60,7 @@ class EvaluatePipeline:
         self._use_wandb = evaluate_args.use_wandb
 
     def run(self) -> dict[str, dict[str, Any]]:
-        test_loader = self._dataset.get_test_dataloader(
-            batch_size=self._batch_size)
+        test_loader = self._dataset.get_test_dataloader(batch_size=self._batch_size)
 
         preds, labels = [], []
 
@@ -69,8 +68,7 @@ class EvaluatePipeline:
 
         avg_dice_score = AverageMeter()
 
-        logger.info("Evaluating %s on dataset %s",
-                    self.model_name, self.dataset_id)
+        logger.info("Evaluating %s on dataset %s", self.model_name, self.dataset_id)
 
         if self._use_wandb:
 
@@ -133,8 +131,11 @@ class EvaluatePipeline:
             # labels.append(gt_npy)
             labels.append(data_item["label"][0][cls_idx])
 
-            avg_dice_score.update(dice_score(
-                preds[-1].to(self._model.device), labels[-1].to(self._model.device)))
+            avg_dice_score.update(
+                dice_score(
+                    preds[-1].to(self._model.device), labels[-1].to(self._model.device)
+                )
+            )
 
         results = {"dice": avg_dice_score.avg}
 

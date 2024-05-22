@@ -7,6 +7,7 @@ from SegVol.model_segvol_single import (
     TextEncoder,
 )
 
+
 class SegVolBase(SegVolModel):
     """
     Baseline model for SegVol.

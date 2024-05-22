@@ -1,3 +1,5 @@
+preds/
+wandb/
 datasets/
 .vscode
 .DS_Store

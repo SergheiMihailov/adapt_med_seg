@@ -1,9 +1,10 @@
-from transformers import AutoTokenizer, PreTrainedModel, PretrainedConfig
-import numpy as np
+import ast
+
 import monai.transforms as transforms
 import nibabel as nib
+import numpy as np
 from scipy import sparse
-import ast
+from transformers import AutoTokenizer, PretrainedConfig, PreTrainedModel
 
 
 class SegVolConfig(PretrainedConfig):
@@ -505,13 +506,14 @@ def select_points(
     return points, labels
 
 
+import random
+
+import numpy as np
 # SegVol
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-from transformers import CLIPTextModel, CLIPTextConfig
-import random
+from transformers import CLIPTextConfig, CLIPTextModel
 
 
 # %% set up model
@@ -845,28 +847,18 @@ class BCELoss(nn.Module):
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import warnings
 from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple, Union
 
 import torch
 import torch.nn.functional as F
-import random
-
-from monai.data.utils import (
-    compute_importance_map,
-    dense_patch_slices,
-    get_valid_patch_size,
-)
+from monai.data.utils import (compute_importance_map, dense_patch_slices,
+                              get_valid_patch_size)
 from monai.transforms import Resize
-from monai.utils import (
-    BlendMode,
-    PytorchPadMode,
-    convert_data_type,
-    ensure_tuple,
-    fall_back_tuple,
-    look_up_option,
-    optional_import,
-)
+from monai.utils import (BlendMode, PytorchPadMode, convert_data_type,
+                         ensure_tuple, fall_back_tuple, look_up_option,
+                         optional_import)
 
 tqdm, _ = optional_import("tqdm", name="tqdm")
 
@@ -1298,9 +1290,9 @@ def _get_scan_interval(
     return tuple(scan_interval)
 
 
+import numpy as np
 # build 3D SAM
 import torch
-import numpy as np
 from monai.networks.nets import ViT
 
 
@@ -1380,11 +1372,11 @@ def _build_sam(
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import List, Optional, Tuple, Type
+
 import torch
 from torch import nn
 from torch.nn import functional as F
-
-from typing import List, Tuple, Type, Optional
 
 
 class MaskDecoder(nn.Module):
@@ -1609,11 +1601,11 @@ class MLP(nn.Module):
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import Any, Optional, Tuple, Type
+
 import numpy as np
 import torch
 from torch import nn
-
-from typing import Any, Optional, Tuple, Type
 
 
 class PromptEncoder(nn.Module):
@@ -1838,11 +1830,11 @@ class PositionEmbeddingRandom(nn.Module):
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import torch
-from torch import Tensor, nn
-
 import math
 from typing import Tuple, Type
+
+import torch
+from torch import Tensor, nn
 
 
 class TwoWayTransformer(nn.Module):
