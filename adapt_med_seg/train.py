@@ -1,8 +1,8 @@
 from adapt_med_seg.data.dataset import MedSegDataset
 from adapt_med_seg.models.lightning_model import SegVolLightning
-from lightning.pytorch import Trainer, seed_everything
+from pytorch_lightning import Trainer, seed_everything
 import argparse
-from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
+from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
 def main():
     parser = argparse.ArgumentParser()
@@ -56,10 +56,11 @@ def main():
     kwargs = vars(args)
 
     seed_everything(args.seed)
+    model_name = kwargs.pop("model_name")
+    modalities = kwargs.pop("modalities")
     model = SegVolLightning(
-        model_name=args.model_name,
-        modalities=args.modalities,
-        use_wandb=args.use_wandb,
+        model_name=model_name,
+        modalities=modalities,
         test_mode=False,
         **kwargs
     )
@@ -67,7 +68,7 @@ def main():
     _dataset = MedSegDataset(
         processor=model._model.processor,
         dataset_path=args.dataset_path,
-        modalities=args.modalities,
+        modalities=modalities,
         train=True,
     )
 
@@ -95,7 +96,7 @@ def main():
         test_dataloader = MedSegDataset(
             processor=model._model.processor,
             dataset_path=args.dataset_path,
-            modalities=args.modalities,
+            modalities=modalities,
             train=False,
         )
         model.set_dataset(test_dataloader, cls_idx=args.cls_idx)

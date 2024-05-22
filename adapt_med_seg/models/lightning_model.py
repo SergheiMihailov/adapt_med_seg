@@ -1,5 +1,4 @@
 from SegVol.model_segvol_single import SegVolConfig
-from adapt_med_seg.models import MODELS
 from pytorch_lightning import LightningModule
 import torch
 
@@ -14,25 +13,23 @@ def get_model(model_name: str, config, **kwargs):
         case "segvol_baseline":
             model = SegVolBase(config)
         case "segvol_lora":
-            model = SegVolLoRA(config, **kwargs)
+            model = SegVolLoRA(config, kwargs["target_modules"], kwargs["lora_r"], kwargs["lora_alpha"], kwargs["lora_dropout"])
         case _:
             raise ValueError(f"Model {model_name} not found.")
     return model
 
 class SegVolLightning(LightningModule):
-    def __init__(self, model_name: str, modalities: list[str], use_wandb: bool, test_mode: bool = False, **kwargs):
+    def __init__(self, model_name: str, modalities: list[str], test_mode: bool = False, **kwargs):
         super().__init__()
         self.save_hyperparameters()
         
         self.model_name = model_name
         self.modalities = modalities
-        self._use_wandb = use_wandb
 
         config = SegVolConfig(test_mode=test_mode)
         self._model = get_model(model_name, config, **kwargs)
 
         self.processor = self._model.processor
-        self.validation_step_outputs = []
     
     def on_fit_start(self) -> None:
         if not hasattr(self, "_dataset") or not hasattr(self, "_cls_idx"):
@@ -117,7 +114,7 @@ class SegVolLightning(LightningModule):
         return score
 
     def test_step(self, batch, batch_idx):
-        # TODO: Implement test_step and inference_step, additionally, wandb logging
+        # TODO: Implement test_step and inference_step
         return self.validation_step(batch, batch_idx)
 
     def on_train_epoch_start(self):
