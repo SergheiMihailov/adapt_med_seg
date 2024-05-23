@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any, NamedTuple
 from dataclasses import dataclass
 from glob import glob
 import json
@@ -49,12 +49,20 @@ class MedSegDataset(Dataset):
     def name(self) -> str:
         return self._name
 
-    def __getitem__(self, idx) -> tuple[DataItem, torch.Tensor, str]:
+    def __getitem__(self, idx) -> tuple[DataItem, torch.Tensor, str, str]:
         ct_path = self._ct_paths[idx]
         gt_path = self._gt_paths[idx]
         modality = str(self._case_modality[idx])
+        label_map = self._case_label[idx]
+        # global is what we return as the label (e.g. pancreas)
+        global_label = self._labels[label_map["global_idx"]]
+        # local label is what we use to index the ground truth
+        local_label = int(label_map["local_idx"])
 
         ct_npy, gt_npy = self._processor.load_uniseg_case(ct_path, gt_path)
+
+        # retrieve the mask
+        gt_npy = gt_npy[:,local_label-1] # -1 because we don't represent '0':background
 
         ct_npy = ct_npy.astype("float32")
         gt_npy = gt_npy.astype("int64")
@@ -64,38 +72,10 @@ class MedSegDataset(Dataset):
         else:
             data_item = self._processor.zoom_transform(ct_npy, gt_npy)
 
-        return data_item, gt_npy, modality
+        return data_item, gt_npy, modality, global_label
 
     def __len__(self):
         return len(self._ct_paths)
-
-    @property
-    def dataset_path(self) -> str:
-        return self._dataset_path
-
-    @property
-    def dataset_number(self) -> str:
-        return self._dataset_number
-
-    @property
-    def labels(self) -> list[str]:
-        return self._labels
-
-    @property
-    def train(self) -> bool:
-        return self._train
-
-    @property
-    def modality_id2name(self) -> dict[int, str]:
-        return self._modality_id2name
-
-    @property
-    def modality_name2id(self) -> dict[str, int]:
-        return self._modality_name2id
-
-    @property
-    def modalities(self) -> str:
-        return self._modalities
 
     def load_dataset(self) -> None:
         """
@@ -127,23 +107,32 @@ class MedSegDataset(Dataset):
             ]
         if dataset_paths == []:
             raise FileNotFoundError("No dataset.json found in the dataset folder or any of its subdirectories")
+        
+        # figure out the global label mapping and override the
+        # dataset-specific labels with the global label ids
+        # creates:
+        # - self.labels: list of global label names
+        # - self._labels_inv: dict of global label names to ids
+        # - self.data_dict: dict of json data for each dataset
+        self._load_and_gather_labels(dataset_paths)
 
         self._modality_id2name = {}
         self._modality_name2id = {}
-        self._labels = []
+
         self._ct_paths = []
         self._gt_paths = []
         self._case_modality = []
+        self._case_label = []
         # M3D-Seg does not specify a validation split so we re-use the test split.
         # not ideal but oh well...
         splits = [("training", "train"), ("validation", "test")]\
             if self.train else ["test"]
-        self.data_idxs = {split[0]: [] for split in splits}
+        self._data_idxs = {split[0]: [] for split in splits}
 
         dataset_names = []
         dataset_numbers = []
-        for dataset_path, json_name in dataset_paths:
-            dataset_name, dataset_number = self._load_single_dataset(dataset_path, json_name, splits)
+        for data in self.data_dict.values():
+            dataset_name, dataset_number = self._load_single_dataset(data, splits)
             dataset_names.append(dataset_name)
             dataset_numbers.append(dataset_number)
 
@@ -154,57 +143,84 @@ class MedSegDataset(Dataset):
 
         # shuffle the data indices, otherwise they will be sorted by dataset
         for split in splits:
-            self.data_idxs[split[0]] = torch.tensor(
-                self.data_idxs[split[0]])[torch.randperm(len(self.data_idxs[split[0]]))]
+            self._data_idxs[split[0]] = torch.tensor(
+                self._data_idxs[split[0]])[torch.randperm(len(self._data_idxs[split[0]]))]
 
         if self.train:
             # create subsets for each split
-            self._tr_val_splits = {split: Subset(self, self.data_idxs[split[0]])
+            self._tr_val_splits = {split[0]: Subset(self, self._data_idxs[split[0]])
                                    for split in splits}
 
+    def _load_and_gather_labels(self, dataset_paths: list[Tuple[str,str]]):
+        label_set = set()
+        self.data_dict = {}
+        for dataset_path, json_name in dataset_paths:
+            json_path = os.path.join(dataset_path, json_name)
+            # load json data
+            with open(json_path, "r", encoding="utf-8") as f:
+                self.data_dict[json_path] = json.load(f)
+            # gather labels
+            label_set = label_set.union(set([
+                x for _, x in self.data_dict[json_path]["labels"].items() if x != "background"
+            ]))
+        # create a label mapping global_index -> (liver, pancreas, ...)
+        self.labels = {str(idx): label for idx, label in enumerate(label_set)}
+        # name to id map (liver, pancreas, ...) -> global_index
+        self._labels_inv = {v: k for k, v in self._labels.items()}
+        # map dataset-specific labels to the global label mapping
+        for json_path, data in self.data_dict.items():
+            # override the labels field with <global_label_id>: <local_label_id>
+            data['labels'] = {
+                self._labels_inv[label]: idx for idx, label in data['labels'].items()\
+                    # excluding any labels not in the global label mapping
+                    if label in self._labels_inv
+            }
 
-    def _load_single_dataset(self, dataset_path: str, json_name: str, splits: List[str|Tuple[str,str]]) -> None:
-        json_path = os.path.join(dataset_path, json_name)
-        with open(json_path, "r", encoding="utf-8") as f:
-            dataset_dict = json.load(f)
+    def _load_single_dataset(self, data_json: str, splits: List[str|Tuple[str,str]]) -> None:
+        data_dict: Dict[str, Any] = self.data_dict[data_json]
+        data_path: str = os.path.dirname(data_json)
 
-        name = dataset_dict["name"]
-        dataset_number = dataset_dict["description"]
+        name = data_dict["name"]
+        dataset_number = data_dict["description"]
 
-        self._modality_id2name.update(dataset_dict.get("modality", {'0': 'CT', '1': 'MRI'}))
+        self._modality_id2name.update(data_dict.get("modality", {'0': 'CT', '1': 'MRI'}))
         self._modality_name2id.update({  #  we will likely need this
             v: k for k, v in self._modality_id2name.items()
         })
         mod_ids = set([self._modality_name2id[mod]
                       for mod in self._modalities if mod in self._modality_name2id])
 
-        # concatenate labels
-        self._labels = list(
-            set(self._labels).union(set([
-            x for _, x in dataset_dict["labels"].items() if x != "background"
-        ])))
+        # each datapoint will correspond to K dataset indices,
+        # one for each local label k
+        local_label_map = [{
+            'global_idx': global_idx,
+            'local_idx': local_idx
+            } for global_idx, local_idx in data_dict["labels"].items()]
 
         base = len(self._ct_paths)
         for split, m3d_split in splits:
-            case_paths = dataset_dict.get(split, dataset_dict.get(m3d_split, None))
+            case_paths = data_dict.get(split, data_dict.get(m3d_split, None))
             idx = 0
             for case_ in case_paths:
                 # default to '0': 'CT', if not specified
                 if case_.get("modality", '0') not in mod_ids:
                     continue
-                ct_path = os.path.join(dataset_path, case_["image"])
-                gt_path = os.path.join(dataset_path, case_["label"])
+                ct_path = os.path.join(data_path, case_["image"])
+                gt_path = os.path.join(data_path, case_["label"])
                 if not os.path.isfile(ct_path):
                     # the M3D seg way
-                    ct_path = os.path.join(os.path.dirname(dataset_path), case_["image"])
+                    ct_path = os.path.join(os.path.dirname(data_path), case_["image"])
                 if not os.path.isfile(gt_path):
                     # the M3D seg way
-                    gt_path = os.path.join(os.path.dirname(dataset_path), case_["label"])
-                self._ct_paths.append(ct_path)
-                self._gt_paths.append(gt_path)
-                self._case_modality.append(int(case_.get("modality", '0')))
-                self.data_idxs[split].append(base + idx)
-                idx += 1
+                    gt_path = os.path.join(os.path.dirname(data_path), case_["label"])
+                # append a new item for each seprate label in the case
+                for llm in local_label_map:
+                    self._ct_paths.append(ct_path)
+                    self._gt_paths.append(gt_path)
+                    self._case_modality.append(int(case_.get("modality", '0')))
+                    self._case_label.append(llm)
+                    self._data_idxs[split].append(base + idx)
+                    idx += 1
             base += idx
 
         return name, dataset_number
@@ -239,3 +255,39 @@ class MedSegDataset(Dataset):
             raise ValueError("This method is only for test dataset")
 
         return DataLoader(self, batch_size=batch_size, shuffle=False)
+
+    @property
+    def dataset_path(self) -> str:
+        return self._dataset_path
+
+    @property
+    def dataset_number(self) -> str:
+        return self._dataset_number
+
+    @property
+    def labels(self) -> list[str]:
+        return self._labels
+
+    @property
+    def labels_inv(self) -> dict[str, int]:
+        return self._labels_inv
+
+    @property
+    def train(self) -> bool:
+        return self._train
+
+    @property
+    def modality_id2name(self) -> dict[int, str]:
+        return self._modality_id2name
+
+    @property
+    def modality_name2id(self) -> dict[str, int]:
+        return self._modality_name2id
+
+    @property
+    def modalities(self) -> str:
+        return self._modalities
+
+    @property
+    def data_dict(self) -> dict[str, Any]:
+        return self._data_dict

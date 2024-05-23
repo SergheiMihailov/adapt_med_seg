@@ -52,29 +52,22 @@ class SegVolLightning(LightningModule):
         self._cls_idx = cls_idx
 
     def training_step(self, batch, batch_idx):
-        data_item, gt_npy, modality = batch
+        data_item, gt_npy, modality, task = batch
         data_item["image"] = data_item["image"].to(self.device)
 
         modality = self._dataset.modality_id2name[modality[0]]
         # this is a mask ground truth
         gt_label = data_item["label"].to(self.device)
-        # I think we need to handle multiple classes here?
-        loss = None
-        for cls_idx in range(len(self._dataset.labels)):
-            train_organs = self._dataset.labels[cls_idx]
-            train_labels = gt_label[:, cls_idx].to(self.device)
 
-            _loss = self._model.forward_train(
-                image=data_item["image"],
-                train_organs=train_organs,
-                train_labels=train_labels,
-                modality=modality,
-            )
+        train_organs = task
+        train_labels = gt_label
 
-            if loss is None:
-                loss = _loss
-            else:
-                loss = loss + _loss
+        loss = self._model.forward_train(
+            image=data_item["image"],
+            train_organs=train_organs,
+            train_labels=train_labels,
+            modality=modality,
+        )
 
         self.log("train_loss", loss.item(), prog_bar=True, on_step=True)
         return loss
