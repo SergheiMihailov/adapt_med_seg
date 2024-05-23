@@ -73,9 +73,6 @@ class MedSegDataset(Dataset):
         else:
             data_item = self._processor.zoom_transform(ct_npy, gt_npy)
 
-        # squeeze the channel dimension. it's always 1
-        data_item["label"] = data_item["label"].squeeze(0)
-
         return data_item, gt_npy, modality, global_label
 
     def __len__(self):
@@ -155,7 +152,7 @@ class MedSegDataset(Dataset):
             self._tr_val_splits = {split[0]: Subset(self, self._data_idxs[split[0]])
                                    for split in splits}
         else:
-            self._test_splits = {split: Subset(self, self.data_idxs[split])
+            self._test_splits = {split: Subset(self, self._data_idxs[split[0]])
                                  for split in splits}
 
     def _load_and_gather_labels(self, dataset_paths: list[Tuple[str,str]]):

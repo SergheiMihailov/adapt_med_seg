@@ -96,12 +96,12 @@ class SegVolLightning(LightningModule):
 
         # point prompt
         point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
-            data_item["zoom_out_label"][0]
+            data_item["zoom_out_label"][0][0]
         )
 
         # bbox prompt
         bbox_prompt, bbox_prompt_map = self._model.processor.bbox_prompt_b(
-            data_item["zoom_out_label"][0]
+            data_item["zoom_out_label"][0][0]
         )
 
         point_prompt = (
@@ -125,7 +125,7 @@ class SegVolLightning(LightningModule):
         )
 
         preds = pred[0][0].to(self.device)
-        labels = data_item["label"][0].to(self.device)
+        labels = data_item["label"][0][0].to(self.device)
 
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
