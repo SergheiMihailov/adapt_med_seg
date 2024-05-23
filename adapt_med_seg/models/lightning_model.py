@@ -6,6 +6,7 @@ from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
 from adapt_med_seg.metrics import dice_score
 from adapt_med_seg.models.segvol_base import SegVolBase
 from adapt_med_seg.models.segvol_lora import SegVolLoRA
+from adapt_med_seg.models.segvol_moe import SegVolMoE
 
 
 def get_model(model_name: str, config, **kwargs):
@@ -14,6 +15,15 @@ def get_model(model_name: str, config, **kwargs):
             model = SegVolBase(config)
         case "segvol_lora":
             model = SegVolLoRA(
+                config,
+                kwargs["target_modules"],
+                kwargs["lora_r"],
+                kwargs["lora_alpha"],
+                kwargs["lora_dropout"],
+                kwargs["train_only_vit"],
+            )
+        case "segvol_moe":
+            model = SegVolMoE(
                 config,
                 kwargs["target_modules"],
                 kwargs["lora_r"],
