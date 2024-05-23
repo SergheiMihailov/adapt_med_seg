@@ -130,7 +130,7 @@ class MedSegDataset(Dataset):
         # M3D-Seg does not specify a validation split so we re-use the test split.
         # not ideal but oh well...
         splits = [("training", "train"), ("validation", "test")]\
-            if self.train else ["test"]
+            if self.train else [("test", "test")]
         self._data_idxs = {split[0]: [] for split in splits}
 
         dataset_names = []

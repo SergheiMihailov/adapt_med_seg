@@ -69,12 +69,11 @@ class SegVolLightning(LightningModule):
         gt_label = data_item["label"].to(self.device)
 
         train_organs = task
-        train_labels = gt_label
 
         loss = self._model.forward_train(
             image=data_item["image"],
             train_organs=train_organs,
-            train_labels=train_labels,
+            train_labels=gt_label,
             modality=modality,
         )
 
