@@ -25,7 +25,6 @@ class EvaluateArgs:
     modalities: str = field(default_factory=lambda: ["CT"])
     device: str = "cuda"
     batch_size: int = 1
-    cls_idx: int = 0
     # text_prompt_template: str = "a photo of {}."
     seed: int = 42
 
@@ -55,7 +54,6 @@ class EvaluatePipeline:
         self.modalities = evaluate_args.modalities
         self.dataset_id = self._dataset.dataset_number
 
-        self._cls_idx = evaluate_args.cls_idx
         self._batch_size = evaluate_args.batch_size
         self._use_wandb = evaluate_args.use_wandb
 
@@ -82,7 +80,6 @@ class EvaluatePipeline:
                 {
                     "dataset": self.dataset_id,
                     "model": self.model_name,
-                    "cls_idx": self._cls_idx,
                     "batch_size": self._batch_size,
                 }
             )
@@ -92,22 +89,20 @@ class EvaluatePipeline:
             desc=f"Evaluating {self._dataset.name}",
             unit="batch",
         ):
-            data_item, gt_npy, modality = batch
+            data_item, gt_npy, modality, task = batch
             data_item = data_item_to_device(data_item, self._model.device)
 
-            cls_idx = self._cls_idx
-
             # text prompt
-            text_prompt = [self._dataset.labels[cls_idx]]
+            text_prompt = task
 
             # point prompt
             point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
-                data_item["zoom_out_label"][0][cls_idx]
+                data_item["zoom_out_label"][0]
             )
 
             # bbox prompt
             bbox_prompt, bbox_prompt_map = self._model.processor.bbox_prompt_b(
-                data_item["zoom_out_label"][0][cls_idx]
+                data_item["zoom_out_label"][0]
             )
 
             point_prompt = (
@@ -131,7 +126,7 @@ class EvaluatePipeline:
 
             preds.append(pred[0][0])
             # labels.append(gt_npy)
-            labels.append(data_item["label"][0][cls_idx])
+            labels.append(data_item["label"][0])
 
             avg_dice_score.update(dice_score(
                 preds[-1].to(self._model.device), labels[-1].to(self._model.device)))

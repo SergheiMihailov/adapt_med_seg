@@ -31,7 +31,7 @@ def main():
         nargs="*",
         help="List of modalities to use",
     )
-    parser.add_argument("--cls_idx", type=int, default=0)
+
     parser.add_argument("--test_at_end", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--use_wandb", action="store_true")
@@ -72,8 +72,8 @@ def main():
         modalities=modalities,
         train=True,
     )
-    return
-    model.set_dataset(_dataset, cls_idx=args.cls_idx)
+
+    model.set_dataset(_dataset)
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
 
     loggers = [TensorBoardLogger(args.log_dir)]
@@ -112,7 +112,7 @@ def main():
             modalities=modalities,
             train=False,
         )
-        model.set_dataset(test_dataloader, cls_idx=args.cls_idx)
+        model.set_dataset(test_dataloader)
         trainer.test(model, test_dataloader)
 
 

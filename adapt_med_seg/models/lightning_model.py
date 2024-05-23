@@ -42,14 +42,13 @@ class SegVolLightning(LightningModule):
         self.processor = self._model.processor
 
     def on_fit_start(self) -> None:
-        if not hasattr(self, "_dataset") or not hasattr(self, "_cls_idx"):
+        if not hasattr(self, "_dataset"):
             raise ValueError("Dataset not set. Call set_dataset() before training.")
         return super().on_fit_start()
 
-    def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
+    def set_dataset(self, dataset: MedSegDataset):
         """Set the dataset for the training pipeline. This method should be called before training. If used in evaluation, you must supply the class index."""
         self._dataset = dataset
-        self._cls_idx = cls_idx
 
     def training_step(self, batch, batch_idx):
         data_item, gt_npy, modality, task = batch
@@ -73,20 +72,20 @@ class SegVolLightning(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        data_item, gt_npy, modality = batch
+        data_item, gt_npy, modality, task = batch
         data_item = data_item_to_device(data_item, self.device)
         modality = self._dataset.modality_id2name[modality[0]]
         # text prompt
-        text_prompt = [self._dataset.labels[self._cls_idx]]
+        text_prompt = task
 
         # point prompt
         point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
-            data_item["zoom_out_label"][0][self._cls_idx]
+            data_item["zoom_out_label"][0]
         )
 
         # bbox prompt
         bbox_prompt, bbox_prompt_map = self._model.processor.bbox_prompt_b(
-            data_item["zoom_out_label"][0][self._cls_idx]
+            data_item["zoom_out_label"][0]
         )
 
         point_prompt = (
@@ -110,7 +109,7 @@ class SegVolLightning(LightningModule):
         )
 
         preds = pred[0][0].to(self.device)
-        labels = data_item["label"][0][self._cls_idx].to(self.device)
+        labels = data_item["label"][0].to(self.device)
 
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
