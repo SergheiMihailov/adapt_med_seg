@@ -85,22 +85,11 @@ def main():
         wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
         loggers.append(wandb_logger)
 
-    # Define a checkpoint callback
-    checkpoint_callback = ModelCheckpoint(
-        dirpath='checkpoints',
-        filename='best-checkpoint',
-        save_top_k=2,
-        verbose=True,
-        monitor='val_dice_score',
-        mode='max'
-    )
-
 
     trainer = Trainer(
         max_epochs=args.epochs,
         accelerator=args.device,
         logger=loggers,
-        # callbacks=[checkpoint_callback],
         # deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
