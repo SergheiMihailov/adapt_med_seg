@@ -1,6 +1,7 @@
 preds/
 wandb/
 datasets/
+datasets.zip
 .vscode
 .DS_Store
 # Byte-compiled / optimized / DLL files

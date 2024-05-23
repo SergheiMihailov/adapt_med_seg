@@ -7,7 +7,9 @@ import argparse
 
 from lightning.pytorch.loggers import WandbLogger
 import wandb
+
 api = wandb.Api()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -76,8 +78,7 @@ def main():
     model.set_dataset(_dataset, cls_idx=args.cls_idx)
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
 
-
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = Trainer(
         max_epochs=args.epochs,
@@ -86,8 +87,8 @@ def main():
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
         accumulate_grad_batches=args.accumulate_grad_batches,
-        logger=[wandb_logger],
-        callbacks=[lr_monitor]
+        logger=wandb_logger if args.use_wandb else None,
+        callbacks=[lr_monitor],
     )
     trainer.fit(model, train_dataloader, val_dataloader)
 

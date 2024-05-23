@@ -1,43 +1,56 @@
-import numpy as np
-from typing import Mapping, Tuple, Type
-import torch
-from peft import LoraConfig, get_peft_model, PeftModel
-import re
 import logging
+import re
+from dataclasses import dataclass
+from typing import Mapping, Tuple, Type
+
+import numpy as np
+import torch
+from peft import LoraConfig, PeftModel, get_peft_model
 from torch import Tensor, nn
+from transformers import AutoModel, AutoTokenizer
 from typing_extensions import Self
-from transformers import AutoTokenizer, AutoModel
+
+from SegVol.model_segvol_single import PromptEncoder as SamPromptEncoder
 from SegVol.model_segvol_single import (
+    SegVol,
     SegVolConfig,
     SegVolModel,
     SegVolProcessor,
-    SegVol,
-    PromptEncoder as SamPromptEncoder,
 )
-from dataclasses import dataclass
+
+REDUCTION = 16
 
 logger = logging.getLogger(__name__)
 
 
-class ContextPriorPool:
+class ContextPriorPool(nn.Module):
     def __init__(
         self,
         tasks: list[str],
         modalities: list[str],
-        dtype: Type[torch.dtype],
-        embed_dim: int = 64,
+        embed_dim: int = 768,
+        modality_prior_len: int = 1,
+        task_prior_len: int = 1,
+        dtype: Type[torch.dtype] = torch.float32,
     ):
+        super(ContextPriorPool, self).__init__()
+
         self.tasks = tasks
         self.modalities = modalities
         self.embed_dim = embed_dim
 
-        self.task_prior_embeddings = nn.ModuleDict(
-            {task: torch.zeros(embed_dim, dtype=dtype) for task in self.tasks}
+        self.task_prior_embeddings = nn.ParameterDict(
+            {
+                task: nn.Parameter(torch.zeros(task_prior_len, embed_dim, dtype=dtype))
+                for task in self.tasks
+            }
         )
 
-        self.modality_prior_embeddings = nn.ModuleDict(
+        self.modality_prior_embeddings = nn.ParameterDict(
             {
-                modality: torch.zeros(embed_dim, dtype=dtype)
+                modality: nn.Parameter(
+                    torch.zeros(modality_prior_len, embed_dim, dtype=dtype)
+                )
                 for modality in self.modalities
             }
         )
@@ -55,106 +68,262 @@ class ContextPriorPool:
             prior.to(device)
 
 
-class ContextPooledPromptEncoder(SamPromptEncoder):
-    """
-    Reimplement the PromptEncoder used in both SegVol and SAM
-    to incorporate context priors.
-    """
+class PriorFusion(nn.Module):
+    def __init__(self, embed_dim: int = 768, num_heads: int = 4):
+        super(PriorFusion, self).__init__()
+        reduction = REDUCTION
 
-    def __init__(
-        self,
-        context_prior_pool: ContextPriorPool,
-        embed_dim: int,
-        image_embedding_size: Tuple[int, int, int],
-        input_image_size: Tuple[int, int, int],
-        mask_in_chans: int,
-        activation: nn.Module = nn.GELU,
-        use_group_embeddings: bool = False,
-    ) -> None:
-        super().__init__(
-            embed_dim, image_embedding_size, input_image_size, mask_in_chans, activation
+        self.embed_dim = embed_dim
+
+        self.group_embeddings = nn.Parameter(
+            torch.zeros(3, embed_dim, requires_grad=True)
         )
-        self.context_prior_pool = context_prior_pool
-        # addition: group embeddings to better distinguish between different types of prompts
-        self.use_group_embeddings = use_group_embeddings
-        if self.use_group_embeddings:
-            # there are 6 groups: point, box, mask, text, task, modality
-            self.group_embeddings = nn.Parameter(torch.zeros(6, embed_dim))
-        else:
-            # zeros
-            self.group_embeddings = torch.zeros(6, embed_dim, requires_grad=False)
+        self.mha = nn.MultiheadAttention(embed_dim, num_heads)
+        self.norm1 = nn.LayerNorm(embed_dim)
+        self.ffn = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim // reduction),
+            nn.ReLU(),
+            nn.Linear(embed_dim // reduction, embed_dim),
+        )
+        self.norm2 = nn.LayerNorm(embed_dim)
 
     def forward(
         self,
-        points: Tuple[Tensor] | None = None,
-        boxes: Tensor | None = None,
-        masks: Tensor | None = None,
-        text_embedding: Tensor | None = None,
-        modality: str | None = None,
-        task: str | None = None,
-    ) -> Tuple[Tensor]:
+        image_rep: torch.Tensor,
+        modality_prior: torch.Tensor,
+        task_prior: torch.Tensor,
+    ):
+        # MHA
+        image_rep = image_rep.permute(1, 0, 2) + self.group_embeddings[0]
+        modality_prior = modality_prior + self.group_embeddings[1]
+        task_prior = task_prior + self.group_embeddings[2]
 
-        bs = self._get_batch_size(points, boxes, masks, text_embedding)
-        sparse_embeddings = torch.empty(
-            (bs, 0, self.embed_dim), device=self._get_device()
+        modality_prior_expanded = modality_prior.unsqueeze(0)  # Now [1, 1, 768]
+        task_prior_expanded = task_prior.unsqueeze(0)  # Now [1, 1, 768]
+
+        input_seq = torch.cat(
+            [image_rep, modality_prior_expanded, task_prior_expanded], dim=0
         )
 
-        if points is not None:
-            coords, labels = points
-            point_embeddings = self._embed_points(coords, labels, pad=(boxes is None))
-            point_embeddings = point_embeddings + self.group_embeddings[0]
-            sparse_embeddings = torch.cat([sparse_embeddings, point_embeddings], dim=1)
+        output_seq, _ = self.mha(input_seq, input_seq, input_seq)
 
-        if boxes is not None:
-            box_embeddings = self._embed_boxes(boxes)
-            box_embeddings = box_embeddings + self.group_embeddings[1]
-            sparse_embeddings = torch.cat([sparse_embeddings, box_embeddings], dim=1)
+        # LayerNorm
+        output_seq = self.norm1(output_seq)
 
-        if text_embedding is not None:
-            text_embedding = text_embedding + self.group_embeddings[3]
-            sparse_embeddings = torch.cat(
-                [sparse_embeddings, text_embedding.unsqueeze(dim=1)], dim=1
+        # FFN
+        output_seq = self.ffn(output_seq)
+
+        # LayerNorm
+        output_seq = self.norm2(output_seq)
+
+        output_seq = output_seq.permute(1, 0, 2)
+
+        image_seq_len = image_rep.shape[0]
+        modality_seq_len = modality_prior.shape[0]
+
+        image_rep = output_seq[:, :image_seq_len, :]
+        modality_prior = output_seq[
+            :, image_seq_len : image_seq_len + modality_seq_len, :
+        ]
+        task_prior = output_seq[:, image_seq_len + modality_seq_len :, :]
+
+        return image_rep, modality_prior, task_prior
+
+
+class PosteriorPrototypeMLP(nn.Module):
+    def __init__(
+        self,
+        t_k: int,
+        C: int,
+        embed_dim: int = 512,
+        task_prior_len: int = 1,
+    ):
+        super(PosteriorPrototypeMLP, self).__init__()
+        self.embed_dim = embed_dim
+        self.task_prior_len = task_prior_len
+
+        self.mlp = nn.Sequential(
+            nn.Linear(embed_dim * self.task_prior_len, embed_dim),
+            nn.ReLU(),
+            nn.Linear(embed_dim, C * t_k),
+        )
+
+    def forward(
+        self,
+        task_prior: torch.Tensor,
+    ):
+
+        return self.mlp(task_prior)
+
+
+class SegVolContextPriorModel(nn.Module):
+    def __init__(
+        self,
+        pretrained_segvol: SegVolModel,
+        config: SegVolConfig,
+        test_mode: bool = False,
+        tasks: list[str] = ["prostate"],
+        modalities: list[str] = ["MRI"],
+        embed_dim: int = 768,
+    ):
+        super(SegVolContextPriorModel, self).__init__()
+
+        embed_dim = 768
+
+        self.pretrained_segvol = pretrained_segvol
+        self.config = config
+        self.test_mode = test_mode
+
+        # Context prior:
+        self.context_prior_pool = ContextPriorPool(
+            dtype=torch.float32,
+            tasks=tasks,
+            modalities=modalities,
+            embed_dim=embed_dim,
+        )
+
+        self.prior_fusion = PriorFusion(embed_dim=embed_dim)
+        self.prototype_mlp = PosteriorPrototypeMLP(
+            t_k=1,  # TODO: Make this a parameter, and should be times number of tasks
+            C=1,
+            embed_dim=embed_dim,
+            task_prior_len=1,
+        )
+
+        target_modules = ["query", "value", "key", "linear1", "linear2"]
+        peft_config = LoraConfig(
+            target_modules=target_modules,
+            inference_mode=self.config.test_mode,
+            use_rslora=True,
+            r=8,
+            lora_alpha=8,
+            lora_dropout=0.0,
+        )
+
+        self.pretrained_segvol = get_peft_model(self.pretrained_segvol, peft_config)
+
+    def forward_train(self, image, train_organs, train_labels, modality):
+        loss = self.model(
+            image,
+            text=None,
+            boxes=None,
+            points=None,
+            train_organs=train_organs,
+            train_labels=train_labels,
+            modality=modality,
+        )
+        return loss
+
+    def forward(
+        self,
+        image,
+        text=None,
+        boxes=None,
+        points=None,
+        modality: str = "MRI",
+        task: str = "prostate",
+        **kwargs,
+    ):
+
+        modality_prior = self.context_prior_pool.get_modality_prior(modality)
+        task_prior = self.context_prior_pool.get_task_prior(task)
+
+        bs = image.shape[0]
+        img_shape = (image.shape[2], image.shape[3], image.shape[4])
+        image_embedding, _ = self.pretrained_segvol.image_encoder(image)
+
+        image_embedding, modality_prior, task_prior = self.prior_fusion(
+            image_embedding, modality_prior, task_prior
+        )
+
+        posterior_prototype = self.prototype_mlp(task_prior)
+
+        image_embedding = image_embedding.transpose(1, 2).view(
+            bs,
+            -1,
+            int(self.pretrained_segvol.feat_shape[0]),
+            int(self.pretrained_segvol.feat_shape[1]),
+            int(self.pretrained_segvol.feat_shape[2]),
+        )
+
+        # test mode
+        if self.test_mode:
+            logits = self.pretrained_segvol.forward_decoder(
+                image_embedding,
+                img_shape,
+                text,
+                boxes,
+                points,
+                # modality=modality,
             )
 
-        if task is not None:
-            task_prior = self.context_prior_pool.get_task_prior(task)
-            task_prior = task_prior + self.group_embeddings[4]
-            task_prior = task_prior.unsqueeze(dim=0).expand(bs, -1, -1)
-            sparse_embeddings = torch.cat([sparse_embeddings, task_prior], dim=1)
+            logits = torch.einsum("btc,bcdhw->btdhw", posterior_prototype, logits)
 
-        if modality is not None:
-            modality_prior = self.context_prior_pool.get_modality_prior(modality)
-            modality_prior = modality_prior + self.group_embeddings[5]
-            modality_prior = modality_prior.unsqueeze(dim=0).expand(bs, -1, -1)
-            sparse_embeddings = torch.cat([sparse_embeddings, modality_prior], dim=1)
+            return logits
 
-        # keeping for compatibility, but SegVol actually does not use mask prompts
-        if masks is not None:
-            dense_embeddings = self._embed_masks(masks)
-        else:
-            dense_embeddings = self.no_mask_embed.weight.reshape(1, -1, 1, 1, 1).expand(
-                bs,
-                -1,
-                int(self.image_embedding_size[0]),
-                int(self.image_embedding_size[1]),
-                int(self.image_embedding_size[2]),
+        # train mode
+        ## sl
+        sl_loss = self.supervised_forward(
+            image,
+            image_embedding,
+            img_shape,
+            kwargs["train_organs"],
+            kwargs["train_labels"],
+            modality=modality,
+            posterior_prototype=posterior_prototype,
+        )
+        ## ssl
+        # ssl_loss = self.unsupervised_forward(image, image_embedding, kwargs['pseudo_seg_cleaned'], img_shape)
+        return sl_loss
+
+    def supervised_forward(
+        self,
+        image,
+        image_embedding,
+        img_shape,
+        training_organs,
+        train_labels,
+        modality=None,
+        posterior_prototype=None,
+    ):
+        device = image_embedding.device
+        iter_points, iter_bboxes, iter_organs = (
+            self.pretrained_segvol.build_prompt_label(
+                image.shape[0], training_organs, train_labels, device
+            )
+        )
+        # select prompt
+        prompt_options = [
+            [None, iter_points, iter_organs],
+            [iter_bboxes, None, iter_organs],
+            [None, None, iter_organs],
+            [iter_bboxes, None, None],
+            [None, iter_points, None],
+            [iter_bboxes, iter_points, None],
+        ]
+        sl_loss = 0
+        for prompt in prompt_options:
+            bboxes, points, organs = prompt
+            logits = self.pretrained_segvol.forward_decoder(
+                image_embedding,
+                img_shape,
+                text=organs,
+                boxes=bboxes,
+                points=points,
+                # modality=modality,
             )
 
-        return sparse_embeddings, dense_embeddings
+            logits = torch.einsum("btc,bcdhw->btdhw", posterior_prototype, logits)
 
-    # def load_from_pretrained(self, state_dict: Mapping[str, Tensor]) -> None:
-    #     return super().load_state_dict(state_dict)
-    def load_from_pretrained(self, state_dict: Mapping[str, Tensor]) -> None:
-        # Get the current model's state dictionary
-        current_state_dict = self.state_dict()
-
-        # Filter the loaded state dictionary to only include keys that exist in the current model
-        filtered_state_dict = {
-            k: v for k, v in state_dict.items() if k in current_state_dict
-        }
-
-        # Load the filtered state dictionary, setting strict=False to ignore any non-matching keys
-        self.load_state_dict(filtered_state_dict, strict=False)
+            # cal loss
+            sl_loss_dice = self.pretrained_segvol.dice_loss.forward(
+                logits.squeeze().float(), train_labels.squeeze().float()
+            )
+            sl_loss_bce = self.pretrained_segvol.bce_loss.forward(
+                logits.squeeze().float(), train_labels.squeeze().float()
+            )
+            sl_loss += sl_loss_dice + sl_loss_bce
+        return sl_loss
 
 
 class SegVolContextPrior(SegVolModel):
@@ -165,66 +334,19 @@ class SegVolContextPrior(SegVolModel):
     def __init__(self, config: SegVolConfig, **kwargs):
         super().__init__(config)
 
-        self.model: SegVol = AutoModel.from_pretrained(
+        pretrained_segvol = AutoModel.from_pretrained(
             "BAAI/SegVol", trust_remote_code=True, test_mode=config.test_mode
         ).model
 
+        self.model: SegVol = SegVolContextPriorModel(
+            pretrained_segvol=pretrained_segvol,
+            config=config,
+        )
+
         clip_tokenizer = AutoTokenizer.from_pretrained("BAAI/SegVol")
-        self.model.text_encoder.tokenizer = clip_tokenizer
+        self.model.pretrained_segvol.text_encoder.tokenizer = clip_tokenizer
 
         self.processor = SegVolProcessor(spatial_size=self.config.spatial_size)
-
-        embed_dim = 768
-
-        # Context prior:
-        self.context_prior_pool = ContextPriorPool(
-            dtype=torch.float32,
-            tasks=kwargs.get("tasks", []),
-            modalities=kwargs.get("modalities", []),
-            embed_dim=embed_dim,
-        )
-
-        patch_size = self.config.patch_size
-        image_size = self.config.spatial_size
-
-        image_embedding_size = [
-            int(item) for item in (np.array(image_size) / np.array(patch_size))
-        ]
-
-        # initialize a pooled prompt encoder and replace the original one
-        # while keeping the pre-trained weights
-        pooled_prompt_encoder = ContextPooledPromptEncoder(
-            # addition: pass the context prior pool
-            context_prior_pool=self.context_prior_pool,
-            embed_dim=embed_dim,
-            image_embedding_size=image_embedding_size,
-            input_image_size=image_size,
-            mask_in_chans=16,
-            # activation=# self.model.text_encoder.activation,
-            # addition: use group embeddings
-            use_group_embeddings=True,
-        )
-        # load the pre-trained weights
-        pooled_prompt_encoder.load_from_pretrained(
-            self.model.prompt_encoder.state_dict()
-        )
-        # replace the original prompt encoder
-        self.model.prompt_encoder = pooled_prompt_encoder
-
-        self.model.prompt_encoder.train(True)
-
-        # PEFT
-        # peft_config = LoraConfig(
-        #     target_modules=kwargs.get('target_modules', ["Conv2d", "LayerNorm2d"]),
-        #     inference_mode=config.test_mode,
-        #     r=kwargs.get('lora_r', 8),
-        #     lora_alpha=kwargs.get('lora_alpha', 8),
-        #     lora_dropout=kwargs.get('lora_dropout', 0.0)
-        # )
-        # self.model: PeftModel = get_peft_model(
-        #     self.model, peft_config
-        # )
-        logger.debug("SegVolContextPrior initialized.\n%s", self.model)
 
     def eval(self) -> Self:
         self.model.train(False)

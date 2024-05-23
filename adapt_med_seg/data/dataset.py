@@ -188,7 +188,6 @@ class MedSegDataset(Dataset):
                 v: k for k, v in self._modality_id2name.items()
             }
         )
-        print(self._modalities)
         mod_ids = set([self._modality_name2id[mod] for mod in self._modalities])
 
         # concatenate labels

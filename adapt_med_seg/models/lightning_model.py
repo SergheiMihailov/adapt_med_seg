@@ -142,12 +142,11 @@ class SegVolLightning(LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             filter(lambda param: param.requires_grad, self.parameters()), lr=1e-4
-        ) 
-
+        )
 
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
-            mode='min',
+            mode="min",
             factor=0.1,
             patience=3,
             verbose=True,
