@@ -55,6 +55,7 @@ class SegVolLoRA(SegVolModel):
             lora_dropout=lora_dropout,
         )
 
+        # FIXME: Not sure but this may break MoE. Why do we make 2 peft models?
         self.model.image_encoder = get_peft_model(self.model.image_encoder, peft_config)
 
         if train_only_vit:
