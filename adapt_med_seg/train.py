@@ -11,7 +11,7 @@ def main():
         "--model_name",
         type=str,
         default="segvol_baseline",
-        choices=["segvol_baseline", "segvol_lora"],
+        choices=["segvol_baseline", "segvol_lora", "segvol_moe"],
     )
     parser.add_argument(
         "--dataset_path",
@@ -44,7 +44,7 @@ def main():
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=8)
     parser.add_argument("--lora_dropout", type=float, default=0.0)
-    parser.add_argument("--target_modules", type=list[str], default=None, nargs="*")
+    parser.add_argument("--target_modules", type=str, default=None, nargs="*")
     parser.add_argument("--log_dir", type=str, default="logs")
     parser.add_argument("--wandb_project", type=str, default="dl2_g33")
     parser.add_argument("--lr", "--learning_rate", type=float, default=5e-5)
@@ -54,6 +54,10 @@ def main():
     parser.add_argument("--ckpt_path", default=None)
 
     args = parser.parse_args()
+    # dataclass can, but argparse can't handle union types,
+    # so we need to do this manually
+    if isinstance(args.target_modules, list) and len(args.target_modules) == 1:
+        args.target_modules = args.target_modules[0]
     kwargs = vars(args)
 
     seed_everything(args.seed)
@@ -81,22 +85,11 @@ def main():
         wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
         loggers.append(wandb_logger)
 
-    # Define a checkpoint callback
-    checkpoint_callback = ModelCheckpoint(
-        dirpath='checkpoints',
-        filename='best-checkpoint',
-        save_top_k=2,
-        verbose=True,
-        monitor='val_dice_score',
-        mode='max'
-    )
-
 
     trainer = Trainer(
         max_epochs=args.epochs,
         accelerator=args.device,
         logger=loggers,
-        # callbacks=[checkpoint_callback],
         # deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
