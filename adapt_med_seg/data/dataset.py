@@ -1,6 +1,7 @@
 from typing import List, Tuple, Dict, Any, NamedTuple
 from dataclasses import dataclass
 from glob import glob
+import numpy as np
 import json
 import os
 
@@ -61,8 +62,8 @@ class MedSegDataset(Dataset):
 
         ct_npy, gt_npy = self._processor.load_uniseg_case(ct_path, gt_path)
 
-        # retrieve the mask
-        gt_npy = gt_npy[:,local_label-1] # -1 because we don't represent '0':background
+        # retrieve the mask, but keep the channel dimension
+        gt_npy = np.expand_dims(gt_npy[local_label-1,...], axis=0)
 
         ct_npy = ct_npy.astype("float32")
         gt_npy = gt_npy.astype("int64")
@@ -111,9 +112,9 @@ class MedSegDataset(Dataset):
         # figure out the global label mapping and override the
         # dataset-specific labels with the global label ids
         # creates:
-        # - self.labels: list of global label names
+        # - self._labels: list of global label names
         # - self._labels_inv: dict of global label names to ids
-        # - self.data_dict: dict of json data for each dataset
+        # - self._data_dict: dict of json data for each dataset
         self._load_and_gather_labels(dataset_paths)
 
         self._modality_id2name = {}
@@ -131,8 +132,8 @@ class MedSegDataset(Dataset):
 
         dataset_names = []
         dataset_numbers = []
-        for data in self.data_dict.values():
-            dataset_name, dataset_number = self._load_single_dataset(data, splits)
+        for json_path in self._data_dict.keys():
+            dataset_name, dataset_number = self._load_single_dataset(json_path, splits)
             dataset_names.append(dataset_name)
             dataset_numbers.append(dataset_number)
 
@@ -153,22 +154,22 @@ class MedSegDataset(Dataset):
 
     def _load_and_gather_labels(self, dataset_paths: list[Tuple[str,str]]):
         label_set = set()
-        self.data_dict = {}
+        self._data_dict = {}
         for dataset_path, json_name in dataset_paths:
             json_path = os.path.join(dataset_path, json_name)
             # load json data
             with open(json_path, "r", encoding="utf-8") as f:
-                self.data_dict[json_path] = json.load(f)
+                self._data_dict[json_path] = json.load(f)
             # gather labels
             label_set = label_set.union(set([
-                x for _, x in self.data_dict[json_path]["labels"].items() if x != "background"
+                x for _, x in self._data_dict[json_path]["labels"].items() if x != "background"
             ]))
         # create a label mapping global_index -> (liver, pancreas, ...)
-        self.labels = {str(idx): label for idx, label in enumerate(label_set)}
+        self._labels = {str(idx): label for idx, label in enumerate(label_set)}
         # name to id map (liver, pancreas, ...) -> global_index
         self._labels_inv = {v: k for k, v in self._labels.items()}
         # map dataset-specific labels to the global label mapping
-        for json_path, data in self.data_dict.items():
+        for json_path, data in self._data_dict.items():
             # override the labels field with <global_label_id>: <local_label_id>
             data['labels'] = {
                 self._labels_inv[label]: idx for idx, label in data['labels'].items()\
@@ -177,7 +178,7 @@ class MedSegDataset(Dataset):
             }
 
     def _load_single_dataset(self, data_json: str, splits: List[str|Tuple[str,str]]) -> None:
-        data_dict: Dict[str, Any] = self.data_dict[data_json]
+        data_dict: Dict[str, Any] = self._data_dict[data_json]
         data_path: str = os.path.dirname(data_json)
 
         name = data_dict["name"]
