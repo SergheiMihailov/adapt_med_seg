@@ -43,18 +43,23 @@ def main():
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=8)
     parser.add_argument("--lora_dropout", type=float, default=0.0)
-    parser.add_argument("--target_modules", type=list[str], default=None, nargs="*")
+    parser.add_argument("--target_modules", type=str, default=None, nargs="*")
     parser.add_argument("--log_dir", type=str, default="logs")
     parser.add_argument("--wandb_project", type=str, default="dl2_g33")
     parser.add_argument("--lr", "--learning_rate", type=float, default=5e-5)
     parser.add_argument("--betas", type=tuple[float, float], default=(0.9, 0.999), nargs=2)
     parser.add_argument("--eps", type=float, default=1e-8)
     parser.add_argument("--train_only_vit", action="store_true")
-    
+
 
     args = parser.parse_args()
     kwargs = vars(args)
-
+    # we need to do this manually because argparse can't handle union types like this
+    # or I'm just too dumb to figure out how to do it
+    if isinstance(kwargs["target_modules"], list) and len(kwargs["target_modules"]) == 1:
+        kwargs["target_modules"] = kwargs["target_modules"][0]
+    print(kwargs)
+    return
     seed_everything(args.seed)
     model_name = kwargs.pop("model_name")
     modalities = kwargs.pop("modalities")
