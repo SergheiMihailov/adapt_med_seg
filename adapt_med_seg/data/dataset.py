@@ -73,6 +73,9 @@ class MedSegDataset(Dataset):
         else:
             data_item = self._processor.zoom_transform(ct_npy, gt_npy)
 
+        # squeeze the channel dimension. it's always 1
+        data_item["label"] = data_item["label"].squeeze(0)
+
         return data_item, gt_npy, modality, global_label
 
     def __len__(self):
