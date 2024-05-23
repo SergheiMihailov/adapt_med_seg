@@ -83,6 +83,13 @@ class SegVolLightning(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         data_item, gt_npy, modality, task = batch
+
+        # ensure there is a batch dimension
+        for key, item in data_item.items():
+            if isinstance(item, torch.Tensor)\
+                and len(item.shape) == 4:
+                data_item[key] = torch.stack([item], dim=0)
+
         data_item = data_item_to_device(data_item, self.device)
         modality = self._dataset.modality_id2name[modality[0]]
         # text prompt
