@@ -7,34 +7,7 @@ from adapt_med_seg.metrics import dice_score
 from adapt_med_seg.models.segvol_base import SegVolBase
 from adapt_med_seg.models.segvol_lora import SegVolLoRA
 from adapt_med_seg.models.segvol_moe import SegVolMoE
-
-
-def get_model(model_name: str, config, **kwargs):
-    match model_name:
-        case "segvol_baseline":
-            model = SegVolBase(config)
-        case "segvol_lora":
-            model = SegVolLoRA(
-                config,
-                kwargs["target_modules"],
-                kwargs["lora_r"],
-                kwargs["lora_alpha"],
-                kwargs["lora_dropout"],
-                kwargs["train_only_vit"],
-            )
-        case "segvol_moe":
-            model = SegVolMoE(
-                config,
-                kwargs["target_modules"],
-                kwargs["lora_r"],
-                kwargs["lora_alpha"],
-                kwargs["lora_dropout"],
-                kwargs["train_only_vit"],
-            )
-        case _:
-            raise ValueError(f"Model {model_name} not found.")
-    return model
-
+from adapt_med_seg.utils.initializers import get_model
 
 class SegVolLightning(LightningModule):
     def __init__(
@@ -82,12 +55,6 @@ class SegVolLightning(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         data_item, gt_npy, modality, task = batch
-
-        # ensure there is a batch dimension
-        for key, item in data_item.items():
-            if isinstance(item, torch.Tensor)\
-                and len(item.shape) == 4:
-                data_item[key] = torch.stack([item], dim=0)
 
         data_item = data_item_to_device(data_item, self.device)
         modality = self._dataset.modality_id2name[modality[0]]
