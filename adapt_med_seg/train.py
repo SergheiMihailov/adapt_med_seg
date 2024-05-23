@@ -10,7 +10,7 @@ def main():
         "--model_name",
         type=str,
         default="segvol_baseline",
-        choices=["segvol_baseline", "segvol_lora"],
+        choices=["segvol_baseline", "segvol_lora", "segvol_moe"],
     )
     parser.add_argument(
         "--dataset_path",
@@ -58,8 +58,7 @@ def main():
     # or I'm just too dumb to figure out how to do it
     if isinstance(kwargs["target_modules"], list) and len(kwargs["target_modules"]) == 1:
         kwargs["target_modules"] = kwargs["target_modules"][0]
-    print(kwargs)
-    return
+
     seed_everything(args.seed)
     model_name = kwargs.pop("model_name")
     modalities = kwargs.pop("modalities")
