@@ -22,7 +22,7 @@ module load 2023
 source $WORK_DIR/.venv/bin/activate
 
 # Danilo: 1h trainig job time went up to epoch 27
-python -m adapt_med_seg.train \
+python -m adapt_med_seg.pipelines.train \
     --model_name "segvol_lora" \
     --dataset_path /scratch-shared/scur0402/datasets \
     --epochs 100 \
