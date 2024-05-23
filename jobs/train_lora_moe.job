@@ -2,12 +2,12 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=LoRA-MRI
+#SBATCH --job-name=moe
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=00:59:00
+#SBATCH --time=01:00:00
 #SBATCH --mem=32000M
-#SBATCH --output=/home/scur0402/jobs/logs/LoRA-MRI_%A.out
+#SBATCH --output=/home/scur0402/jobs/logs/moe_%A.out
 
 date
 
@@ -16,16 +16,14 @@ export HF_DATASETS_CACHE=/scratch-shared/scur0402/hf_cache_dir
 WORK_DIR=$HOME/danilo/adapt_med_seg
 cd $WORK_DIR
 
-
-module purge
 module load 2023
+module load PyTorch/2.1.2-foss-2023a-CUDA-12.1.1
 source $WORK_DIR/.venv/bin/activate
 
-# Danilo: 1h trainig job time went up to epoch 27
-python -m adapt_med_seg.pipelines.train \
-    --model_name "segvol_lora" \
+python -m adapt_med_seg.train \
+    --model_name "segvol_moe \
     --dataset_path /scratch-shared/scur0402/datasets \
     --epochs 100 \
+    --bf16 \
     --lora_r 16 \
-    --lora_alpha 16 \
-    --ckpt_path last
+    --lora_alpha 16 

@@ -1,161 +1,120 @@
-from dataclasses import dataclass, field
-from typing import Any
-from SegVol.model_segvol_single import SegVolConfig
-from adapt_med_seg.models import MODELS
-from pytorch_lightning import LightningModule, Trainer
-from torch.utils.data import DataLoader
-import torch.optim as optim
-import torch.nn.functional as F
-import torch
+from adapt_med_seg.data.dataset import MedSegDataset
+from adapt_med_seg.models.lightning_model import SegVolLightning
+from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks import ModelCheckpoint
+import argparse
+from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
-from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
-from adapt_med_seg.pipelines.utils.initializers import intialize_model
-from adapt_med_seg.metrics import dice_score
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model_name",
+        type=str,
+        default="segvol_baseline",
+        choices=["segvol_baseline", "segvol_lora"],
+    )
+    parser.add_argument(
+        "--dataset_path",
+        type=str,
+        default="datasets",
+        help="Path to the dataset(s)",
+    )
+    parser.add_argument(
+        "--device", type=str, default="cuda", help="Device to use for training"
+    )
 
-@dataclass
-class TrainingArgs:
-    use_wandb: bool = False
-    model_name: str = "segvol_baseline"
-    dataset_path: str = None,
-    modalities: str = "CT",
-    device: str = "cuda"
-    batch_size: int = 1
-    cls_idx: int = 0
-    # text_prompt_template: str = "a photo of {}."
-    seed: int = 42
-    training_epochs: int = 10
-    optimizer: Any = None
-    test_mode: bool = False
+    # TODO: Check if this is correct with Miki
+    parser.add_argument(
+        "--modalities",
+        type=list[str],
+        default=["MRI"],
+        nargs="*",
+        help="List of modalities to use",
+    )
+    parser.add_argument("--cls_idx", type=int, default=0)
+    parser.add_argument("--test_at_end", action="store_true")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--use_wandb", action="store_true")
+    parser.add_argument("--num_sanity_val_steps", type=int, default=0)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--fp16", action="store_true")
+    parser.add_argument("--bf16", action="store_true")
+    parser.add_argument("--accumulate_grad_batches", type=int, default=1,
+                        help="Number of batches to accumulate before backprop. In theory, this could reduce training time and simulate larger batches (which we can't do with the current models).")
+    parser.add_argument("--lora_r", type=int, default=8)
+    parser.add_argument("--lora_alpha", type=int, default=8)
+    parser.add_argument("--lora_dropout", type=float, default=0.0)
+    parser.add_argument("--target_modules", type=list[str], default=None, nargs="*")
+    parser.add_argument("--log_dir", type=str, default="logs")
+    parser.add_argument("--wandb_project", type=str, default="dl2_g33")
+    parser.add_argument("--lr", "--learning_rate", type=float, default=5e-5)
+    parser.add_argument("--betas", type=tuple[float, float], default=(0.9, 0.999), nargs=2)
+    parser.add_argument("--eps", type=float, default=1e-8)
+    parser.add_argument("--train_only_vit", action="store_true")
+    parser.add_argument("--ckpt_path", default=None)
 
-    def to_dict(self) -> dict[str, Any]:
-        return self.__dict__
+    args = parser.parse_args()
+    kwargs = vars(args)
+
+    seed_everything(args.seed)
+    model_name = kwargs.pop("model_name")
+    modalities = kwargs.pop("modalities")
+    model = SegVolLightning(
+        model_name=model_name,
+        modalities=modalities,
+        test_mode=False,
+        **kwargs
+    )
+
+    _dataset = MedSegDataset(
+        processor=model._model.processor,
+        dataset_path=args.dataset_path,
+        modalities=modalities,
+        train=True,
+    )
+
+    model.set_dataset(_dataset, cls_idx=args.cls_idx)
+    train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
+
+    loggers = [TensorBoardLogger(args.log_dir)]
+    if args.use_wandb:
+        wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
+        loggers.append(wandb_logger)
+
+    # Define a checkpoint callback
+    checkpoint_callback = ModelCheckpoint(
+        dirpath='checkpoints',
+        filename='best-checkpoint',
+        save_top_k=2,
+        verbose=True,
+        monitor='val_dice_score',
+        mode='max'
+    )
 
 
-class SegVolLightning(LightningModule):
-    def __init__(self, train_args: TrainingArgs):
-        super().__init__()
-        self.save_hyperparameters()
-        
-        self.train_args = train_args
+    trainer = Trainer(
+        max_epochs=args.epochs,
+        accelerator=args.device,
+        logger=loggers,
+        # callbacks=[checkpoint_callback],
+        # deterministic=True,
+        num_sanity_val_steps=args.num_sanity_val_steps,
+        precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
+        accumulate_grad_batches=args.accumulate_grad_batches,
+    )
+    trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)
 
-        self.model_name = train_args.model_name
-        self.dataset_path = train_args.dataset_path
-        self.modalities = train_args.modalities
-
-        self._cls_idx = train_args.cls_idx
-        self._batch_size = train_args.batch_size
-        self._use_wandb = train_args.use_wandb
-
-        config = SegVolConfig(test_mode=train_args.test_mode)
-        self._model = intialize_model(
-            model_name=train_args.model_name,
-            config=config,
-            device=train_args.device
-        ) #MODELS[self.model_name](config)
-
-        # self._dataset = MedSegDataset(
-        #     dataset_path=self.dataset_path,
-        #     processor=self._model.processor,
-        #     modalities=self.modalities,
-        #     train=False,
-        # )
-
-        self.processor = self._model.processor
-
-        self.validation_step_outputs = []
-        
-    def set_dataset(self, dataset: MedSegDataset, cls_idx: int = 0):
-        """Set the dataset for the training pipeline. This method should be called before training. If used in evaluation, you must supply the class index."""
-        self._dataset = dataset
-        self._cls_idx = cls_idx
-
-    def training_step(self, batch, batch_idx):
-        data_item, gt_npy, modality = batch
-        data_item["image"] = data_item["image"].to(self.device)
-
-        modality = self._dataset.modality_id2name[modality[0]]
-        # this is a mask ground truth
-        gt_label = data_item["label"].to(self.device)
-        # I think we need to handle multiple classes here?
-        loss = None
-        for cls_idx in range(len(self._dataset.labels)):
-            train_organs = self._dataset.labels[cls_idx]
-            train_labels = gt_label[:, cls_idx].to(self.device)
-
-            _loss = self._model.forward_train(
-                image=data_item["image"],
-                train_organs=train_organs,
-                train_labels=train_labels,
-                modality=modality,
-            )
-
-            if loss is None:
-                loss = _loss
-            else:
-                loss = loss + _loss
-
-        self.log("train_loss", loss.item())
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        data_item, gt_npy, modality = batch
-        data_item = data_item_to_device(data_item, self.device)
-        modality = self._dataset.modality_id2name[modality[0]]
-        # text prompt
-        text_prompt = [self._dataset.labels[self._cls_idx]]
-
-        # point prompt
-        point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
-            data_item["zoom_out_label"][0][self._cls_idx]
+    if args.test_at_end:
+        # Reinitialize the dataset for testing
+        test_dataloader = MedSegDataset(
+            processor=model._model.processor,
+            dataset_path=args.dataset_path,
+            modalities=modalities,
+            train=False,
         )
+        model.set_dataset(test_dataloader, cls_idx=args.cls_idx)
+        trainer.test(model, test_dataloader)
 
-        # bbox prompt
-        bbox_prompt, bbox_prompt_map = self._model.processor.bbox_prompt_b(
-            data_item["zoom_out_label"][0][self._cls_idx]
-        )
 
-        point_prompt = (
-            point_prompt[0].to(self.device),  # point
-            point_prompt[1].to(self.device),  # point label
-        )
-        point_prompt_map = point_prompt_map.to(self.device)
-        bbox_prompt = bbox_prompt.to(self.device)
-        bbox_prompt_map = bbox_prompt_map.to(self.device)
-
-        pred = self._model.forward_test(
-            image=data_item["image"],
-            zoomed_image=data_item["zoom_out_image"],
-            point_prompt_group=[point_prompt, point_prompt_map],
-            bbox_prompt_group=(
-                None if point_prompt else [bbox_prompt, bbox_prompt_map]
-            ),
-            text_prompt=text_prompt,
-            use_zoom=True,
-            modality=modality,
-        )
-
-        preds = pred[0][0]
-        labels = data_item["label"][0][self._cls_idx]
-
-        score = dice_score(preds, labels)
-        self.validation_step_outputs.append(score)
-        return score
-
-    def test_step(self, batch, batch_idx):
-        return self.validation_step(batch, batch_idx)
-
-    def on_train_epoch_start(self):
-        super().on_train_epoch_start()
-        self.train()
-
-    def on_validation_epoch_end(self):
-        self.log(
-            "val_dice_score",
-            sum(self.validation_step_outputs) / len(self.validation_step_outputs),
-        )
-        self.validation_step_outputs.clear()
-
-    def configure_optimizers(self):
-        return torch.optim.Adam(
-            filter(lambda param: param.requires_grad, self.parameters()), lr=1e-4
-        )
+if __name__ == "__main__":
+    main()
