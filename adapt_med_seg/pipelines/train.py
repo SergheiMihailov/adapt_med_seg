@@ -26,7 +26,7 @@ def main():
     # TODO: Check if this is correct with Miki
     parser.add_argument(
         "--modalities",
-        type=list[str],
+        type=str,
         default=["MRI"],
         nargs="*",
         help="List of modalities to use",
@@ -72,7 +72,7 @@ def main():
         modalities=modalities,
         train=True,
     )
-
+    return
     model.set_dataset(_dataset, cls_idx=args.cls_idx)
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
 

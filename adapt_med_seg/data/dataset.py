@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from dataclasses import dataclass
 from glob import glob
 import json
@@ -55,10 +55,10 @@ class MedSegDataset(Dataset):
         modality = str(self._case_modality[idx])
 
         ct_npy, gt_npy = self._processor.load_uniseg_case(ct_path, gt_path)
-        
+
         ct_npy = ct_npy.astype("float32")
         gt_npy = gt_npy.astype("int64")
-        
+
         if self.train and idx not in getattr(self, "_test_indices", []):
             data_item = self._processor.train_transform(ct_npy, gt_npy)
         else:
@@ -117,13 +117,13 @@ class MedSegDataset(Dataset):
         if not os.path.exists(self.dataset_path):
             raise FileNotFoundError(f"Dataset path {self.dataset_path} does not exist in directory {os.getcwd()}")
         if os.path.exists(os.path.join(self.dataset_path, "dataset.json")):
-            dataset_paths = [os.path.join(self.dataset_path)]
+            dataset_paths = [(self.dataset_path, 'dataset.json')]
         else:
             dataset_paths = [
-                dirpath
+                (dirpath, path)
                 # use os.walk to get all subdirectories
                 for dirpath, _, files in os.walk(self.dataset_path)
-                for path in files if path == "dataset.json"
+                for path in files if path.endswith(".json")
             ]
         if dataset_paths == []:
             raise FileNotFoundError("No dataset.json found in the dataset folder or any of its subdirectories")
@@ -134,13 +134,16 @@ class MedSegDataset(Dataset):
         self._ct_paths = []
         self._gt_paths = []
         self._case_modality = []
-        splits = ["training", "validation"] if self.train else ["test"]
-        self.data_idxs = {split: [] for split in splits}
+        # M3D-Seg does not specify a validation split so we re-use the test split.
+        # not ideal but oh well...
+        splits = [("training", "train"), ("validation", "test")]\
+            if self.train else ["test"]
+        self.data_idxs = {split[0]: [] for split in splits}
 
         dataset_names = []
         dataset_numbers = []
-        for dataset_path in dataset_paths:
-            dataset_name, dataset_number = self._load_single_dataset(dataset_path, splits)
+        for dataset_path, json_name in dataset_paths:
+            dataset_name, dataset_number = self._load_single_dataset(dataset_path, json_name, splits)
             dataset_names.append(dataset_name)
             dataset_numbers.append(dataset_number)
 
@@ -151,29 +154,29 @@ class MedSegDataset(Dataset):
 
         # shuffle the data indices, otherwise they will be sorted by dataset
         for split in splits:
-            self.data_idxs[split] = torch.tensor(
-                self.data_idxs[split])[torch.randperm(len(self.data_idxs[split]))]
+            self.data_idxs[split[0]] = torch.tensor(
+                self.data_idxs[split[0]])[torch.randperm(len(self.data_idxs[split[0]]))]
 
         if self.train:
             # create subsets for each split
-            self._tr_val_splits = {split: Subset(self, self.data_idxs[split])
+            self._tr_val_splits = {split: Subset(self, self.data_idxs[split[0]])
                                    for split in splits}
 
 
-    def _load_single_dataset(self, dataset_path: str, splits: List[str]) -> None:
-        json_path = os.path.join(dataset_path, "dataset.json")
+    def _load_single_dataset(self, dataset_path: str, json_name: str, splits: List[str|Tuple[str,str]]) -> None:
+        json_path = os.path.join(dataset_path, json_name)
         with open(json_path, "r", encoding="utf-8") as f:
             dataset_dict = json.load(f)
 
         name = dataset_dict["name"]
         dataset_number = dataset_dict["description"]
 
-        self._modality_id2name.update(dataset_dict["modality"])
+        self._modality_id2name.update(dataset_dict.get("modality", {'0': 'CT', '1': 'MRI'}))
         self._modality_name2id.update({  #  we will likely need this
             v: k for k, v in self._modality_id2name.items()
         })
         mod_ids = set([self._modality_name2id[mod]
-                      for mod in self._modalities])
+                      for mod in self._modalities if mod in self._modality_name2id])
 
         # concatenate labels
         self._labels = list(
@@ -182,17 +185,24 @@ class MedSegDataset(Dataset):
         ])))
 
         base = len(self._ct_paths)
-        for split in splits:
-            case_paths = dataset_dict[split]
+        for split, m3d_split in splits:
+            case_paths = dataset_dict.get(split, dataset_dict.get(m3d_split, None))
             idx = 0
             for case_ in case_paths:
-                if case_["modality"] not in mod_ids:
+                # default to '0': 'CT', if not specified
+                if case_.get("modality", '0') not in mod_ids:
                     continue
-                self._ct_paths.append(
-                    os.path.join(dataset_path, case_["image"]))
-                self._gt_paths.append(
-                    os.path.join(dataset_path, case_["label"]))
-                self._case_modality.append(int(case_["modality"]))
+                ct_path = os.path.join(dataset_path, case_["image"])
+                gt_path = os.path.join(dataset_path, case_["label"])
+                if not os.path.isfile(ct_path):
+                    # the M3D seg way
+                    ct_path = os.path.join(os.path.dirname(dataset_path), case_["image"])
+                if not os.path.isfile(gt_path):
+                    # the M3D seg way
+                    gt_path = os.path.join(os.path.dirname(dataset_path), case_["label"])
+                self._ct_paths.append(ct_path)
+                self._gt_paths.append(gt_path)
+                self._case_modality.append(int(case_.get("modality", '0')))
                 self.data_idxs[split].append(base + idx)
                 idx += 1
             base += idx
