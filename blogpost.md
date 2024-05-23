@@ -1,19 +1,21 @@
 # SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning
 
 
-Medical image segmentation (MIS) is a significant challenge in the field of computer vision due to several complexities. Firstly, the data comprises various image modalities, such as Computed Tomography (CT), Magnetic Resonance Imaging (MRI), Endoscopy, and Ultrasound (US), each employing fundamentally different techniques. Secondly, these medical images target different parts of the human anatomy, resulting in substantial variations in label space and data distribution. Thirdly, unlike conventional images, acquiring large-scale medical data is challenging due to the high costs of annotation and privacy concerns. This difficulty is exacerbated in the case of volumetric (3D) medical images, which are particularly hard to obtain, store, and annotate, and require significant computational resources for processing (Du et al., 2024). Consequently, developing a universal model that demonstrates robust and consistent performance across the entire MIS domain is exceptionally challenging.
+Medical image segmentation (MIS) is a significant challenge in the field of computer vision due to several complexities. Firstly, the data comprises various image modalities, such as Computed Tomography (CT), Magnetic Resonance Imaging (MRI), Endoscopy, and Ultrasound (US), each employing fundamentally different techniques. Secondly, these medical images target different parts of the human anatomy, resulting in substantial variations in label space and data distribution. Thirdly, unlike conventional images, acquiring large-scale medical data is challenging due to the high costs of annotation and privacy concerns. This difficulty is exacerbated in the case of volumetric (3D) medical images, which are particularly hard to obtain, store, and annotate, and require significant computational resources for processing [[1]](#ref1). Consequently, developing a universal model that demonstrates robust and consistent performance across the entire MIS domain is exceptionally challenging.
 
-This study focuses on SegVol, a foundation model designed for MIS and pre-trained on CT volumes. Notably, SegVol exhibits promising zero-shot performance on MRI data. Our objective is to evaluate the transferability of SegVol's CT pre-training to MRI data through fine-tuning techniques. Our approach comprises two main strategies: First, we will quantitatively evaluate SegVol's performance under controlled input distribution shifts within the MRI modality. Second, we aim to enhance SegVol's performance in the MRI domain by employing advanced prompts, parameter-efficient fine-tuning, and modality-specific priors. Additionally, we will assess the impact of fine-tuning on SegVol's performance in the CT domain. Broadly, this work seeks to provide insights into the adaptability of MIS models across different medical imaging modalities.
+This study focuses on SegVol [[1]](#ref1), a foundation model designed for MIS and pre-trained on CT volumes. Notably, SegVol exhibits promising zero-shot performance on MRI data. Our objective is to evaluate the transferability of SegVol's CT pre-training to MRI data through fine-tuning techniques. Our approach comprises two main strategies: First, we will quantitatively evaluate SegVol's performance under controlled input distribution shifts within the MRI modality. Second, we aim to enhance SegVol's performance in the MRI domain by employing advanced prompts, parameter-efficient fine-tuning, and modality-specific priors. Additionally, we will assess the impact of fine-tuning on SegVol's performance in the CT domain. Broadly, this work seeks to provide insights into the adaptability of MIS models across different medical imaging modalities.
 
 ## Background
 
-Recently, several large-scale models have been proposed to address the challenges of universality and robustness in image segmentation across both natural and medical domains. Notably, the Segment Anything Model (SAM) (Kirillov et al., 2023) is a large pre-trained foundation model specifically designed for image segmentation, demonstrating impressive results on various tasks, including segmentation of out-of-distribution samples. However, subsequent studies have revealed that despite SAM’s exceptional performance on natural images, it underperforms on most medical image segmentation (MIS) tasks, such as organ, tumor, and lesion segmentation across CT, MRI, and Ultrasound modalities (Ma et al., 2024; G.-P. Ji et al., 2023; Sheng et al., 2023; W. Ji et al., 2024; Roy et al., n.d.; Y. Ji et al., 2022).
+Recently, several large-scale models have been proposed to address the challenges of universality and robustness in image segmentation across both natural and medical domains. Notably, the Segment Anything Model (SAM) [[2]](#ref2) is a large pre-trained foundation model specifically designed for image segmentation, demonstrating impressive results on various tasks, including segmentation of out-of-distribution samples. However, subsequent studies have revealed that despite SAM’s exceptional performance on natural images, it underperforms on most medical image segmentation (MIS) tasks, such as organ, tumor, and lesion segmentation across CT, MRI, and Ultrasound modalities [[3]](#ref3) [[4]](#ref4) [[5]](#ref5) [[6]](#ref6) [[7]](#ref7).
 
-To address these limitations, several new methods have been proposed to adapt SAM for improved performance on MIS tasks (Wu et al., 2023; Cheng et al., 2023; Haoyu Wang et al., 2023). SAM-Med2D, developed by Cheng et al. (2023), is a fine-tuned version of SAM trained on 19.7 million 2D masks from various body parts and imaging techniques. Although SAM-Med2D achieves significant improvements over the pre-trained SAM, treating 3D images such as CT and MRI as independent 2D slices is suboptimal. Haoyu Wang et al. (2023) reformulated SAM into a 3D architecture, called SAM-Med3D, and trained it on 131,000 3D masks across 247 categories. SAM-Med3D generates higher quality masks with significantly fewer point prompts compared to SAM-Med2D. Despite its remarkable performance, SAM-Med3D still faces challenges in processing large inputs (hence the volumetric design) and does not support segmentation using semantic prompts.
+To address these limitations, several new methods have been proposed to adapt SAM for improved performance on MIS tasks [[8]](#ref8) [[9]](#ref9) [[10]](#ref10). SAM-Med2D [[9]](#ref9) is a fine-tuned version of SAM trained on 19.7 million 2D masks from various body parts and imaging techniques. This version incorporates learnable adapter layers in each Transformer block, allowing the model to acquire domain-specific knowledge crucial for medical image segmentation. Point prompts, bounding box prompts, and mask prompts play crucial roles in guiding the model to specific regions of interest within medical images. Despite the adaptation, treating 3D images such as CT and MRI as independent 2D slices is suboptimal.
 
-Most recently, Du et al. (2024) proposed SegVol, a volumetric model pre-trained on a large collection of CT images from various segmentation datasets. The authors claim that SegVol generalizes remarkably well to unseen data, achieving state-of-the-art zero-shot performance on most MIS tasks. Interestingly, although SegVol was trained explicitly on CT images, it also demonstrates good zero-shot performance in the MRI domain. Additionally, the authors introduced a novel zoom-in-zoom-out method for inference, which significantly reduces the computational cost of volumetric image segmentation while effectively utilizing the 3D structure's information. SegVol also supports semantic prompts, broadening its range of applications.
+Haoyu Wang et al. (2023) [[10]](#ref10) reformulated SAM into a 3D architecture, called SAM-Med3D, and trained it on 131,000 3D masks across 247 categories. Unlike SAM-Med2D, which treats volumetric data as individual 2D slices, SAM-Med3D processes the data in its entirety using a 3D decoder. This method allows SAM-Med3D to capture more spatial context and generate higher quality masks with significantly fewer point prompts compared to SAM-Med2D. However, SAM-Med3D still faces challenges in processing large inputs due to its volumetric design and does not support segmentation using semantic prompts.
 
-To develop a truly universal medical image segmentation model, Gao et al. (2024) proposed Hermes, which learns task- and modality-specific priors inspired by the training program of medical radiology residents. Specifically, they trained a pool of "priors," from which Hermes performs context-aware sampling based on the input image's modality (e.g., MRI, CT, PET) and the task description. Segmentation masks are inferred from hidden representations obtained by integrating the input image representation with the learned priors. As a result, Hermes is reported to be competitive with, or even outperform, state-of-the-art task- and modality-specific approaches across a wide range of benchmarks.
+Most recently, Du et al. (2024) proposed SegVol [[1]](#ref1), a volumetric model pre-trained on a large collection of CT images from various segmentation datasets. The authors claim that SegVol generalizes remarkably well to unseen data, achieving state-of-the-art zero-shot performance on most MIS tasks. SegVol employs composite-type prompts that combine semantic and spatial information, significantly enhancing its segmentation accuracy. Additionally, the authors introduced a novel zoom-in-zoom-out method for inference, which significantly reduces the computational cost of volumetric image segmentation while effectively utilizing the 3D structure's information. Despite being explicitly trained on CT images, SegVol demonstrates good zero-shot performance in the MRI domain, underscoring its versatility.
+
+To develop a truly universal medical image segmentation model, Gao et al. (2024) proposed Hermes [[11]](#ref11), which learns task- and modality-specific priors inspired by the training program of medical radiology residents. Hermes integrates these priors through context-aware sampling based on the input image's modality (e.g., MRI, CT, PET) and the task description. This approach allows Hermes to adapt dynamically to different segmentation challenges, offering a significant improvement over single-task models. Contextual prompts derived from the learned priors are used to adapt the model’s segmentation strategy dynamically. Hermes has been shown to be competitive with, or even outperform, state-of-the-art task- and modality-specific approaches across a wide range of benchmarks.
 
 ## Methodology
 
@@ -44,156 +46,50 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 ## References
 
-<div id="refs" class="references csl-bib-body hanging-indent"
-entry-spacing="0">
 
-<div id="ref-sammed2d" class="csl-entry">
-
-Cheng, Junlong, Jin Ye, Zhongying Deng, Jianpin Chen, Tianbin Li, Haoyu
-Wang, Yanzhou Su, et al. 2023. “Sam-Med2d.” *arXiv Preprint
-arXiv:2308.16184*.
-
-</div>
-
-<div id="ref-ding2022delta" class="csl-entry">
-
-Ding, Ning, Yujia Qin, Guang Yang, Fuchao Wei, Zonghan Yang, Yusheng Su,
-Shengding Hu, et al. 2022. “Delta Tuning: A Comprehensive Study of
-Parameter Efficient Methods for Pre-Trained Language Models.”
-<https://arxiv.org/abs/2203.06904>.
-
-</div>
-
-<div id="ref-segvol" class="csl-entry">
-
-Du, Yuxin, Fan Bai, Tiejun Huang, and Bo Zhao. 2024. “SegVol: Universal
+<a name="ref1">[1]</a>: Du, Yuxin, Fan Bai, Tiejun Huang, and Bo Zhao. 2024. “SegVol: Universal
 and Interactive Volumetric Medical Image Segmentation.”
 <https://arxiv.org/abs/2311.13385>.
 
-</div>
-
-<div id="ref-gao2024training" class="csl-entry">
-
-Gao, Yunhe, Zhuowei Li, Di Liu, Mu Zhou, Shaoting Zhang, and Dimitris N.
-Metaxas. 2024. “Training Like a Medical Resident: Context-Prior Learning
-Toward Universal Medical Image Segmentation.”
-<https://arxiv.org/abs/2306.02416>.
-
-</div>
-
-<div id="ref-hu2021lora" class="csl-entry">
-
-Hu, Edward J., Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi
-Li, Shean Wang, Lu Wang, and Weizhu Chen. 2021. “LoRA: Low-Rank
-Adaptation of Large Language Models.”
-<https://arxiv.org/abs/2106.09685>.
-
-</div>
-
-<div id="ref-ji2023sam" class="csl-entry">
-
-Ji, Ge-Peng, Deng-Ping Fan, Peng Xu, Ming-Ming Cheng, Bowen Zhou, and
-Luc Van Gool. 2023. “SAM Struggles in Concealed Scenes–Empirical Study
-on" Segment Anything".” *arXiv Preprint arXiv:2304.06022*.
-
-</div>
-
-<div id="ref-ji2024segment" class="csl-entry">
-
-Ji, Wei, Jingjing Li, Qi Bi, Tingwei Liu, Wenbo Li, and Li Cheng. 2024.
-“Segment Anything Is Not Always Perfect: An Investigation of Sam on
-Different Real-World Applications.” Springer.
-
-</div>
-
-<div id="ref-lim2" class="csl-entry">
-
-Ji, Yuanfeng, Haotian Bai, Chongjian Ge, Jie Yang, Ye Zhu, Ruimao Zhang,
-Zhen Li, et al. 2022. “Amos: A Large-Scale Abdominal Multi-Organ
-Benchmark for Versatile Medical Image Segmentation.” *Advances in Neural
-Information Processing Systems* 35: 36722–32.
-
-</div>
-
-<div id="ref-sam" class="csl-entry">
-
-Kirillov, Alexander, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe
+<a name="ref2">[2]</a>: Kirillov, Alexander, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe
 Rolland, Laura Gustafson, Tete Xiao, et al. 2023. “Segment Anything.” In
 *Proceedings of the IEEE/CVF International Conference on Computer
 Vision*, 4015–26.
 
-</div>
-
-<div id="ref-ma2024segment" class="csl-entry">
-
-Ma, Jun, Yuting He, Feifei Li, Lin Han, Chenyu You, and Bo Wang. 2024.
+<a name="ref3">[3]</a>: Ma, Jun, Yuting He, Feifei Li, Lin Han, Chenyu You, and Bo Wang. 2024.
 “Segment Anything in Medical Images.” *Nature Communications* 15 (1):
 654.
 
-</div>
+<a name="ref4">[4]</a>: Ji, Ge-Peng, Deng-Ping Fan, Peng Xu, Ming-Ming Cheng, Bowen Zhou, and
+Luc Van Gool. 2023. “SAM Struggles in Concealed Scenes–Empirical Study
+on" Segment Anything".” *arXiv Preprint arXiv:2304.06022*.
 
-<div id="ref-peft" class="csl-entry">
+<a name="ref5">[5]</a>: Sheng, He, Rina Bao, Jingpeng Li, Patricia Grant, and Yangming Ou. 2023.
+“Accuracy of Segment-Anything Model (SAM) in Medical Image Segmentation
+Tasks,” April.
 
-Mangrulkar, Sourab, Sylvain Gugger, Lysandre Debut, Younes Belkada,
-Sayak Paul, and Benjamin Bossan. 2022. “PEFT: State-of-the-Art
-Parameter-Efficient Fine-Tuning Methods.”
-<https://github.com/huggingface/peft>.
+<a name="ref6">[6]</a>: Ji, Wei, Jingjing Li, Qi Bi, Tingwei Liu, Wenbo Li, and Li Cheng. 2024.
+“Segment Anything Is Not Always Perfect: An Investigation of Sam on
+Different Real-World Applications.” Springer.
 
-</div>
-
-<div id="ref-MedicalImageSegmentation2019" class="csl-entry">
-
-Petitjean, Caroline. 2019. “Current Methods in Medical Image
-Segmentation.” *Journal of Imaging* 5.
-
-</div>
-
-<div id="ref-lim1" class="csl-entry">
-
-Roy, S, T Wald, G Koehler, MR Rokuss, N Disch, J Holzschuh, D Zimmerer,
+<a name="ref7">[7]</a>: Roy, S, T Wald, G Koehler, MR Rokuss, N Disch, J Holzschuh, D Zimmerer,
 KH Maier-Hein, and MD SAM. n.d. “Zero-Shot Medical Image Segmentation
 Capabilities of the Segment Anything Model. arXiv 2023.” *arXiv Preprint
 arXiv:2304.05396*.
 
-</div>
-
-<div id="ref-he2023accuracy" class="csl-entry">
-
-Sheng, He, Rina Bao, Jingpeng Li, Patricia Grant, and Yangming Ou. 2023.
-“Accuracy of Segment-Anything Model (SAM) in Medical Image Segmentation
-Tasks,” April.
-
-</div>
-
-<div id="ref-Radiotherapy2023" class="csl-entry">
-
-Valdagni, Riccardo, Marco Montorsi, and Tiziana Rancati. 2023.
-“Automatic Segmentation with Deep Learning in Radiotherapy.” *Cancers*
-15 (17): 4389.
-
-</div>
-
-<div id="ref-sammed3d" class="csl-entry">
-
-Wang, Haoyu, Sizheng Guo, Jin Ye, Zhongying Deng, Junlong Cheng, Tianbin
-Li, Jianpin Chen, et al. 2023. “Sam-Med3d.” *arXiv Preprint
-arXiv:2310.15161*.
-
-</div>
-
-<div id="ref-Wang2024" class="csl-entry">
-
-Wang, Huaijun, and Xinhong Hei. 2024. “Automatic Medical Image
-Segmentation with Vision Transformer.” *Applied Sciences* 14 (7): 2741.
-
-</div>
-
-<div id="ref-wu2023medical" class="csl-entry">
-
-Wu, Junde, Wei Ji, Yuanpei Liu, Huazhu Fu, Min Xu, Yanwu Xu, and Yueming
+<a name="ref8">[8]</a>: Wu, Junde, Wei Ji, Yuanpei Liu, Huazhu Fu, Min Xu, Yanwu Xu, and Yueming
 Jin. 2023. “Medical SAM Adapter: Adapting Segment Anything Model for
 Medical Image Segmentation.” <https://arxiv.org/abs/2304.12620>.
 
-</div>
+<a name="ref9">[9]</a>: Cheng, Junlong, Jin Ye, Zhongying Deng, Jianpin Chen, Tianbin Li, Haoyu
+Wang, Yanzhou Su, et al. 2023. “Sam-Med2d.” *arXiv Preprint
+arXiv:2308.16184*.
 
-</div>
+<a name="ref10">[10]</a>: Wang, Haoyu, Sizheng Guo, Jin Ye, Zhongying Deng, Junlong Cheng, Tianbin
+Li, Jianpin Chen, et al. 2023. “Sam-Med3d.” *arXiv Preprint
+arXiv:2310.15161*.
+
+<a name="ref11">[11]</a>: Gao, Yunhe, Zhuowei Li, Di Liu, Mu Zhou, Shaoting Zhang, and Dimitris N.
+Metaxas. 2024. “Training Like a Medical Resident: Context-Prior Learning
+Toward Universal Medical Image Segmentation.”
+<https://arxiv.org/abs/2306.02416>.
