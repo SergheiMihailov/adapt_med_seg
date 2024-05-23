@@ -1,19 +1,31 @@
-from SegVol.model_segvol_single import SegVolConfig, SegVolModel, SegVolProcessor
+from SegVol.model_segvol_single import (
+    SegVol,
+    SegVolConfig,
+    SegVolModel,
+    SegVolProcessor,
+)
+from transformers import AutoModel, AutoTokenizer
 
-from adapt_med_seg.models.segvol_base import SegVolBase
-from transformers import AutoModel, AutoTokenizer, PreTrainedModel
+from peft import LoraConfig, get_peft_model, PeftModel
 
-from peft import PeftModel, LoraConfig, get_peft_model
 
-class SegVolLORA(SegVolBase, PreTrainedModel):
+class SegVolLoRA(SegVolModel):
     """
     Baseline model for SegVol.
     """
 
-    def __init__(self, config: SegVolConfig, r=8, alpha = 8, dropout = 0.0):
+    def __init__(
+        self,
+        config: SegVolConfig,
+        target_modules: list[str] = None,
+        lora_r: int = 8,
+        lora_alpha: int = 8,
+        lora_dropout: float = 0.0,
+        train_only_vit: bool = False,
+    ):
         super().__init__(config)
 
-        self.model = AutoModel.from_pretrained(
+        self.model: SegVol = AutoModel.from_pretrained(
             "BAAI/SegVol", trust_remote_code=True, test_mode=config.test_mode
         ).model
 
@@ -22,55 +34,45 @@ class SegVolLORA(SegVolBase, PreTrainedModel):
 
         self.processor = SegVolProcessor(spatial_size=self.config.spatial_size)
 
+        if target_modules is None:
+            target_modules = [
+                "mlp.linear1",
+                "mlp.linear2",
+                "attn.qkv",
+                "self_attn.q_proj",
+                "self_attn.v_proj",
+                "cross_attn_image_to_token.q_proj",
+                "cross_attn_image_to_token.v_proj",
+                "final_attn_token_to_image.q_proj",
+                "final_attn_token_to_image.v_proj",
+            ]
         peft_config = LoraConfig(
-            target_modules=["q_proj", "v_proj"],
+            target_modules=target_modules,
             inference_mode=config.test_mode,
-            r=r,
+            r=lora_r,
             use_rslora=True,
-            lora_alpha=alpha,
-            lora_dropout=dropout,
+            lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
         )
 
-        # self.model.__class__ = PreTrainedModel
-        self.model = get_peft_model(self.model, peft_config)
-        
+        self.model.image_encoder = get_peft_model(self.model.image_encoder, peft_config)
+
+        if train_only_vit:
+            self.model.mask_decoder.requires_grad_(False)
+            self.model.prompt_encoder.requires_grad_(False)
+        else:
+            self.model.mask_decoder = get_peft_model(
+                self.model.mask_decoder, peft_config
+            )
+
     def save_pretrained(self, path: str):
-        self.model.save_pretrained(path)
+        self.model.image_encoder.save_pretrained(path + "/image_encoder")
+        if isinstance(self.model.mask_decoder, PeftModel):
+            self.model.mask_decoder.save_pretrained(path + "/mask_decoder")
+        super().save_pretrained(path)
 
-    def train(self, mode = True):
-        self.model.model.train(mode)
-        self.model.model.test_mode = not mode
+    def train(self, mode=True):
+        self.model.train(mode)
+        self.model.test_mode = not mode
         self.config.test_mode = not mode
-
-class SegVolLoRA(SegVolBase):
-    def __init__(self, config: SegVolConfig, r=8, alpha = 8, dropout = 0.0):
-        super().__init__(config)
-        lora_config = LoraConfig(
-            r=r,
-            lora_alpha=alpha,
-            lora_dropout=dropout
-        )
-        self.model = get_peft_model(self.model, lora_config)
-
-# class SegVolLoraViT(SegVolBase):
-#     def __init__(self, config: SegVolConfig):
-#         super().__init__(config)
-#         lora_config = LoraConfig(
-#             r=32,
-#             lora_alpha=32,
-#             target_modules=["query", "value"],
-#             lora_dropout=0.1,
-#             bias="lora_only",
-#             modules_to_save=["decode_head"]
-#         )
-#         self.model = get_peft_model(self.model, lora_config)
-
-# class SegVolLoraAll(SegVolBase):
-#     def __init__(self, config: SegVolConfig):
-#         super().__init__(config)
-#         lora_config = LoraConfig(
-#             r=32,
-#             lora_alpha=32,
-#             lora_dropout=0.1
-#         )
-#         self.model = get_peft_model(self.model, lora_config)
+        return self

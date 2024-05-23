@@ -114,13 +114,19 @@ class MedSegDataset(Dataset):
             depending on the train attribute.
         """
 
+        if not os.path.exists(self.dataset_path):
+            raise FileNotFoundError(f"Dataset path {self.dataset_path} does not exist in directory {os.getcwd()}")
         if os.path.exists(os.path.join(self.dataset_path, "dataset.json")):
             dataset_paths = [os.path.join(self.dataset_path)]
         else:
             dataset_paths = [
-                os.path.dirname(path)
-                for path in glob(os.path.join(self.dataset_path, "**", "dataset.json"))
+                dirpath
+                # use os.walk to get all subdirectories
+                for dirpath, _, files in os.walk(self.dataset_path)
+                for path in files if path == "dataset.json"
             ]
+        if dataset_paths == []:
+            raise FileNotFoundError("No dataset.json found in the dataset folder or any of its subdirectories")
 
         self._modality_id2name = {}
         self._modality_name2id = {}
