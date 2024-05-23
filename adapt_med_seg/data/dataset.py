@@ -152,7 +152,7 @@ class MedSegDataset(Dataset):
             self._tr_val_splits = {split[0]: Subset(self, self._data_idxs[split[0]])
                                    for split in splits}
         else:
-            self._test_splits = {split: Subset(self, self._data_idxs[split[0]])
+            self._test_splits = {split[0]: Subset(self, self._data_idxs[split[0]])
                                  for split in splits}
 
     def _load_and_gather_labels(self, dataset_paths: list[Tuple[str,str]]):
