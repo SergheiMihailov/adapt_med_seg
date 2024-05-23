@@ -125,12 +125,13 @@ class EvaluatePipeline:
             labels.append(data_item["label"][0][0])
             score = dice_score(preds[-1].to(self._model.device), labels[-1].to(self._model.device))
             avg_dice_score.update(score)
-            per_modality_scores[self._dataset.modality_id2name[modality[0]]].update(score)
+            per_modality_scores[
+                self._dataset.modality_id2name[modality[0]]].update(score)
 
         results = {
-            "dice": avg_dice_score.avg, 
+            "dice": float(avg_dice_score.avg),
             "per_modality_dice": {
-                modality_name: score.avg 
+                modality_name: float(score.avg)
                 for modality_name, score in per_modality_scores.items()
             }
         }
