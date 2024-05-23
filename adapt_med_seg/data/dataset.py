@@ -73,9 +73,6 @@ class MedSegDataset(Dataset):
         else:
             data_item = self._processor.zoom_transform(ct_npy, gt_npy)
 
-        # squeeze the channel dimension. it's always 1
-        data_item["label"] = data_item["label"].squeeze(0)
-
         return data_item, gt_npy, modality, global_label
 
     def __len__(self):
@@ -130,7 +127,7 @@ class MedSegDataset(Dataset):
         # M3D-Seg does not specify a validation split so we re-use the test split.
         # not ideal but oh well...
         splits = [("training", "train"), ("validation", "test")]\
-            if self.train else ["test"]
+            if self.train else [("test", "test")]
         self._data_idxs = {split[0]: [] for split in splits}
 
         dataset_names = []
@@ -154,6 +151,9 @@ class MedSegDataset(Dataset):
             # create subsets for each split
             self._tr_val_splits = {split[0]: Subset(self, self._data_idxs[split[0]])
                                    for split in splits}
+        else:
+            self._test_splits = {split[0]: Subset(self, self._data_idxs[split[0]])
+                                 for split in splits}
 
     def _load_and_gather_labels(self, dataset_paths: list[Tuple[str,str]]):
         label_set = set()
@@ -257,8 +257,12 @@ class MedSegDataset(Dataset):
     ) -> DataLoader:
         if self.train:
             raise ValueError("This method is only for test dataset")
-
-        return DataLoader(self, batch_size=batch_size, shuffle=False)
+        test_dataloader = DataLoader(
+            self._test_splits["test"],
+            batch_size=batch_size,
+            shuffle=False
+        )
+        return test_dataloader
 
     @property
     def dataset_path(self) -> str:
@@ -295,3 +299,4 @@ class MedSegDataset(Dataset):
     @property
     def data_dict(self) -> dict[str, Any]:
         return self._data_dict
+

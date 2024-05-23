@@ -7,34 +7,7 @@ from adapt_med_seg.metrics import dice_score
 from adapt_med_seg.models.segvol_base import SegVolBase
 from adapt_med_seg.models.segvol_lora import SegVolLoRA
 from adapt_med_seg.models.segvol_moe import SegVolMoE
-
-
-def get_model(model_name: str, config, **kwargs):
-    match model_name:
-        case "segvol_baseline":
-            model = SegVolBase(config)
-        case "segvol_lora":
-            model = SegVolLoRA(
-                config,
-                kwargs["target_modules"],
-                kwargs["lora_r"],
-                kwargs["lora_alpha"],
-                kwargs["lora_dropout"],
-                kwargs["train_only_vit"],
-            )
-        case "segvol_moe":
-            model = SegVolMoE(
-                config,
-                kwargs["target_modules"],
-                kwargs["lora_r"],
-                kwargs["lora_alpha"],
-                kwargs["lora_dropout"],
-                kwargs["train_only_vit"],
-            )
-        case _:
-            raise ValueError(f"Model {model_name} not found.")
-    return model
-
+from adapt_med_seg.utils.initializers import get_model
 
 class SegVolLightning(LightningModule):
     def __init__(
@@ -66,15 +39,14 @@ class SegVolLightning(LightningModule):
 
         modality = self._dataset.modality_id2name[modality[0]]
         # this is a mask ground truth
-        gt_label = data_item["label"].to(self.device)
+        gt_label = data_item["label"][0].to(self.device)
 
         train_organs = task
-        train_labels = gt_label
 
         loss = self._model.forward_train(
             image=data_item["image"],
             train_organs=train_organs,
-            train_labels=train_labels,
+            train_labels=gt_label,
             modality=modality,
         )
 
@@ -83,6 +55,7 @@ class SegVolLightning(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         data_item, gt_npy, modality, task = batch
+
         data_item = data_item_to_device(data_item, self.device)
         modality = self._dataset.modality_id2name[modality[0]]
         # text prompt
@@ -90,12 +63,12 @@ class SegVolLightning(LightningModule):
 
         # point prompt
         point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
-            data_item["zoom_out_label"][0]
+            data_item["zoom_out_label"][0][0]
         )
 
         # bbox prompt
         bbox_prompt, bbox_prompt_map = self._model.processor.bbox_prompt_b(
-            data_item["zoom_out_label"][0]
+            data_item["zoom_out_label"][0][0]
         )
 
         point_prompt = (
@@ -119,7 +92,7 @@ class SegVolLightning(LightningModule):
         )
 
         preds = pred[0][0].to(self.device)
-        labels = data_item["label"][0].to(self.device)
+        labels = data_item["label"][0][0].to(self.device)
 
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
