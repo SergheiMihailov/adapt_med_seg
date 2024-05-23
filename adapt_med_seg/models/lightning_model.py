@@ -66,7 +66,7 @@ class SegVolLightning(LightningModule):
 
         modality = self._dataset.modality_id2name[modality[0]]
         # this is a mask ground truth
-        gt_label = data_item["label"].to(self.device)
+        gt_label = data_item["label"][0].to(self.device)
 
         train_organs = task
 
