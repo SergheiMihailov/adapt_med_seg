@@ -4,10 +4,8 @@ import torch
 
 from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
 from adapt_med_seg.metrics import dice_score
-from adapt_med_seg.models.segvol_base import SegVolBase
-from adapt_med_seg.models.segvol_lora import SegVolLoRA
-from adapt_med_seg.models.segvol_moe import SegVolMoE
 from adapt_med_seg.utils.initializers import get_model
+
 
 class SegVolLightning(LightningModule):
     def __init__(
@@ -23,6 +21,8 @@ class SegVolLightning(LightningModule):
         self._model = get_model(model_name, config, **kwargs)
 
         self.processor = self._model.processor
+
+        self.best_score = 0.0
 
     def on_fit_start(self) -> None:
         if not hasattr(self, "_dataset"):
@@ -51,6 +51,7 @@ class SegVolLightning(LightningModule):
         )
 
         self.log("train_loss", loss.item(), prog_bar=True, on_step=True)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -94,8 +95,12 @@ class SegVolLightning(LightningModule):
         preds = pred[0][0].to(self.device)
         labels = data_item["label"][0][0].to(self.device)
 
+        preds = preds.to(self.device)
+        labels = labels.to(self.device)
+
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
+
         return score
 
     def test_step(self, batch, batch_idx):
@@ -112,9 +117,19 @@ class SegVolLightning(LightningModule):
         self._dataset._train = False
 
     def configure_optimizers(self):
+
         lr = getattr(self.hparams, "lr", 5e-5)
         betas = getattr(self.hparams, "betas", (0.9, 0.999))
         eps = getattr(self.hparams, "eps", 1e-8)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.3,
+            patience=3,
+            verbose=True,
+            cooldown=5,
+            min_lr=1e-7,
+        )
         optimizer = torch.optim.AdamW(
             filter(lambda param: param.requires_grad, self.parameters()),
             lr=lr,
@@ -122,4 +137,8 @@ class SegVolLightning(LightningModule):
             eps=eps,
         )
         # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-        return optimizer
+
+        return [optimizer], [{"scheduler": scheduler, "monitor": "train_loss"}]
+
+    def lr_scheduler_step(self, scheduler, metric):
+        scheduler.step(metric)

@@ -1,12 +1,18 @@
 import argparse
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model_name",
         type=str,
         default="segvol_baseline",
-        choices=["segvol_baseline", "segvol_lora", "segvol_moe"],
+        choices=[
+            "segvol_baseline",
+            "segvol_lora",
+            "segvol_moe",
+            "segvol_context_prior",
+        ],
     )
     parser.add_argument(
         "--dataset_path",
@@ -34,8 +40,12 @@ def parse_arguments():
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--fp16", action="store_true")
     parser.add_argument("--bf16", action="store_true")
-    parser.add_argument("--accumulate_grad_batches", type=int, default=1,
-                        help="Number of batches to accumulate before backprop. In theory, this could reduce training time and simulate larger batches (which we can't do with the current models).")
+    parser.add_argument(
+        "--accumulate_grad_batches",
+        type=int,
+        default=1,
+        help="Number of batches to accumulate before backprop. In theory, this could reduce training time and simulate larger batches (which we can't do with the current models).",
+    )
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=8)
     parser.add_argument("--lora_dropout", type=float, default=0.0)
@@ -44,7 +54,8 @@ def parse_arguments():
     parser.add_argument("--wandb_project", type=str, default="dl2_g33")
     parser.add_argument("--lr", "--learning_rate", type=float, default=5e-5)
     parser.add_argument(
-        "--betas", type=tuple[float, float], default=(0.9, 0.999), nargs=2)
+        "--betas", type=tuple[float, float], default=(0.9, 0.999), nargs=2
+    )
     parser.add_argument("--eps", type=float, default=1e-8)
     parser.add_argument("--train_only_vit", action="store_true")
     parser.add_argument("--ckpt_path", default=None)

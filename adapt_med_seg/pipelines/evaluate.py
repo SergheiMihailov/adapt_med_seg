@@ -25,10 +25,7 @@ class EvaluateArgs:
 
 
 class EvaluatePipeline:
-    def __init__(
-        self,
-        **kwargs
-    ) -> None:
+    def __init__(self, **kwargs) -> None:
         self.model_name = kwargs["model_name"]
         self._use_wandb = kwargs["use_wandb"]
         self._wandb_project = kwargs["wandb_project"]
@@ -52,20 +49,21 @@ class EvaluatePipeline:
         self.dataset_id = self._dataset.dataset_number
 
     def run(self) -> dict[str, dict[str, Any]]:
-        test_loader = self._dataset.get_test_dataloader(
-            batch_size=self._batch_size)
+        test_loader = self._dataset.get_test_dataloader(batch_size=self._batch_size)
 
         preds, labels = [], []
 
         results = {}
 
         avg_dice_score = AverageMeter()
-        per_modality_scores = {modality_name: AverageMeter()
-                               for modality_name in self._dataset.modality_name2id.keys()}
-        per_task_scores = {task: AverageMeter()
-                           for task in self._dataset.labels.values()}
-        logger.info("Evaluating %s on dataset %s",
-                    self.model_name, self.dataset_id)
+        per_modality_scores = {
+            modality_name: AverageMeter()
+            for modality_name in self._dataset.modality_name2id.keys()
+        }
+        per_task_scores = {
+            task: AverageMeter() for task in self._dataset.labels.values()
+        }
+        logger.info("Evaluating %s on dataset %s", self.model_name, self.dataset_id)
 
         if self._use_wandb:
 
@@ -124,10 +122,13 @@ class EvaluatePipeline:
             preds.append(pred[0][0])
             # labels.append(gt_npy)
             labels.append(data_item["label"][0][0])
-            score = dice_score(preds[-1].to(self._model.device), labels[-1].to(self._model.device))
+            score = dice_score(
+                preds[-1].to(self._model.device), labels[-1].to(self._model.device)
+            )
             avg_dice_score.update(score)
-            per_modality_scores[
-                self._dataset.modality_id2name[modality[0]]].update(score)
+            per_modality_scores[self._dataset.modality_id2name[modality[0]]].update(
+                score
+            )
             per_task_scores[task[0]].update(score)
 
         results = {
@@ -137,14 +138,17 @@ class EvaluatePipeline:
                 for modality_name, score in per_modality_scores.items()
             },
             "per_task_dice": {
-                task: float(score.avg)
-                for task, score in per_task_scores.items()
-            }
+                task: float(score.avg) for task, score in per_task_scores.items()
+            },
         }
 
         if self._use_wandb:
-            wandb.log({"dice_score": results["dice"],
-                       "per_modality_dice": results["per_modality_dice"]})
+            wandb.log(
+                {
+                    "dice_score": results["dice"],
+                    "per_modality_dice": results["per_modality_dice"],
+                }
+            )
             wandb.finish()
 
         return results

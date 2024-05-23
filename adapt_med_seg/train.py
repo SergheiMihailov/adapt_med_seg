@@ -1,9 +1,13 @@
 from adapt_med_seg.data.dataset import MedSegDataset
 from adapt_med_seg.models.lightning_model import SegVolLightning
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from adapt_med_seg.utils.cli import parse_arguments
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
+import wandb
+
+api = wandb.Api()
+
 
 def main():
     args = parse_arguments()
@@ -13,11 +17,12 @@ def main():
     model_name = kwargs.pop("model_name")
     modalities = kwargs.pop("modalities")
     model = SegVolLightning(
-        model_name=model_name,
-        modalities=modalities,
-        test_mode=False,
-        **kwargs
+        model_name=model_name, modalities=modalities, test_mode=False, **kwargs
     )
+
+    # if args.use_wandb:
+    wandb_logger = WandbLogger(project="dl2_g33")
+    wandb_logger.watch(model, log="all", log_freq=100)
 
     _dataset = MedSegDataset(
         processor=model._model.processor,
@@ -34,6 +39,7 @@ def main():
         wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
         loggers.append(wandb_logger)
 
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = Trainer(
         max_epochs=args.epochs,
@@ -43,6 +49,8 @@ def main():
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
         accumulate_grad_batches=args.accumulate_grad_batches,
+        logger=[wandb_logger],
+        callbacks=[lr_monitor],
     )
     trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)
 
