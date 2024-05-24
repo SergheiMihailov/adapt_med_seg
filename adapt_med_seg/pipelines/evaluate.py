@@ -62,7 +62,8 @@ class EvaluatePipeline:
         avg_dice_score = AverageMeter()
         per_modality_scores = {modality_name: AverageMeter()
                                for modality_name in self._dataset.modality_name2id.keys()}
-
+        per_task_scores = {task: AverageMeter()
+                           for task in self._dataset.labels.values()}
         logger.info("Evaluating %s on dataset %s",
                     self.model_name, self.dataset_id)
 
@@ -127,12 +128,17 @@ class EvaluatePipeline:
             avg_dice_score.update(score)
             per_modality_scores[
                 self._dataset.modality_id2name[modality[0]]].update(score)
+            per_task_scores[task].update(score)
 
         results = {
             "dice": float(avg_dice_score.avg),
             "per_modality_dice": {
                 modality_name: float(score.avg)
                 for modality_name, score in per_modality_scores.items()
+            },
+            "per_task_dice": {
+                task: float(score.avg)
+                for task, score in per_task_scores.items()
             }
         }
 

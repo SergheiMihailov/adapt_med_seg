@@ -31,6 +31,6 @@ module load 2023
 source $ENVDIR
 
 # Danilo: 1h trainig job time went up to epoch 27
-python -m adapt_med_seg.pipelines.train \
+python -m adapt_med_seg.eval \
     --model_name segvol_baseline \
     $(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)
