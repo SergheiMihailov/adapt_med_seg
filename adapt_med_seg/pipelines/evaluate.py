@@ -90,7 +90,7 @@ class EvaluatePipeline:
             data_item = data_item_to_device(data_item, self._model.device)
 
             # text prompt
-            text_prompt = task
+            text_prompt = task[0]
 
             # point prompt
             point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
@@ -128,7 +128,7 @@ class EvaluatePipeline:
             avg_dice_score.update(score)
             per_modality_scores[
                 self._dataset.modality_id2name[modality[0]]].update(score)
-            per_task_scores[task].update(score)
+            per_task_scores[task[0]].update(score)
 
         results = {
             "dice": float(avg_dice_score.avg),
