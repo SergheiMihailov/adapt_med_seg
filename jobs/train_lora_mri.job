@@ -22,10 +22,10 @@ module load 2023
 source $WORK_DIR/.venv/bin/activate
 
 # Danilo: 1h trainig job time went up to epoch 27
-python -m adapt_med_seg.pipelines.train \
+python -m adapt_med_seg.train \
     --model_name "segvol_lora" \
     --dataset_path /scratch-shared/scur0402/datasets \
     --epochs 100 \
     --lora_r 16 \
     --lora_alpha 16 \
-    --ckpt_path last
+    --ckpt_path /home/scur0402/danilo/adapt_med_seg/logs/lightning_logs/version_4/checkpoints/epoch=79-step=16000.ckpt
