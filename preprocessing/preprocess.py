@@ -99,7 +99,7 @@ def run(args: Namespace):
         data_splits, modality_info, classes = parse_saml(args.dataset_root,
                                                         test_ratio=args.test_ratio,
                                                         val_ratio=args.val_ratio)
-    elif args.dataset_type == 'brats2021':
+    elif args.dataset_type == 'BRATS2021':
         data_splits, modality_info, classes = parse_brats2021(args.dataset_root,
                                                         test_ratio=args.test_ratio,
                                                         val_ratio=args.val_ratio)
