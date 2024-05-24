@@ -8,7 +8,7 @@ import wandb
 from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
 from SegVol.model_segvol_single import SegVolConfig
 from adapt_med_seg.metrics import dice_score
-from adapt_med_seg.pipelines.utils.initializers import intialize_model
+from adapt_med_seg.utils.initializers import get_model
 from adapt_med_seg.utils.average_meter import AverageMeter
 
 
@@ -19,15 +19,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class EvaluateArgs:
-    use_wandb: bool = False
-    model_name: str = "segvol_baseline"
-    dataset_path: str = None
-    modalities: str = field(default_factory=lambda: ["CT"])
-    device: str = "cuda"
-    batch_size: int = 1
-    cls_idx: int = 0
-    # text_prompt_template: str = "a photo of {}."
-    seed: int = 42
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__
@@ -36,28 +27,29 @@ class EvaluateArgs:
 class EvaluatePipeline:
     def __init__(
         self,
-        evaluate_args: EvaluateArgs,
+        **kwargs
     ) -> None:
-        self._model = intialize_model(
-            model_name=evaluate_args.model_name,
+        self.model_name = kwargs["model_name"]
+        self._use_wandb = kwargs["use_wandb"]
+        self._wandb_project = kwargs["wandb_project"]
+        self._dataset_path = kwargs["dataset_path"]
+        self._modalities = kwargs["modalities"]
+        self._device = kwargs["device"]
+        self._batch_size = kwargs["batch_size"]
+
+        self._model = get_model(
+            model_name=self.model_name,
             config=SegVolConfig(test_mode=True),
-            device=evaluate_args.device,
+            kwargs=kwargs,
         )
 
         self._dataset = MedSegDataset(
-            dataset_path=evaluate_args.dataset_path,
+            dataset_path=self._dataset_path,
             processor=self._model.processor,
-            modalities=evaluate_args.modalities,
+            modalities=self._modalities,
             train=False,
         )
-
-        self.model_name = evaluate_args.model_name
-        self.modalities = evaluate_args.modalities
         self.dataset_id = self._dataset.dataset_number
-
-        self._cls_idx = evaluate_args.cls_idx
-        self._batch_size = evaluate_args.batch_size
-        self._use_wandb = evaluate_args.use_wandb
 
     def run(self) -> dict[str, dict[str, Any]]:
         test_loader = self._dataset.get_test_dataloader(
@@ -68,21 +60,23 @@ class EvaluatePipeline:
         results = {}
 
         avg_dice_score = AverageMeter()
-
+        per_modality_scores = {modality_name: AverageMeter()
+                               for modality_name in self._dataset.modality_name2id.keys()}
+        per_task_scores = {task: AverageMeter()
+                           for task in self._dataset.labels.values()}
         logger.info("Evaluating %s on dataset %s",
                     self.model_name, self.dataset_id)
 
         if self._use_wandb:
 
             wandb.init(
-                project="dl2_g33",
+                project=self._wandb_project,
                 name=f"Evaluation_{self.model_name}_on_{self.dataset_id}",
             )
             wandb.config.update(
                 {
                     "dataset": self.dataset_id,
                     "model": self.model_name,
-                    "cls_idx": self._cls_idx,
                     "batch_size": self._batch_size,
                 }
             )
@@ -92,22 +86,20 @@ class EvaluatePipeline:
             desc=f"Evaluating {self._dataset.name}",
             unit="batch",
         ):
-            data_item, gt_npy, modality = batch
+            data_item, gt_npy, modality, task = batch
             data_item = data_item_to_device(data_item, self._model.device)
 
-            cls_idx = self._cls_idx
-
             # text prompt
-            text_prompt = [self._dataset.labels[cls_idx]]
+            text_prompt = task[0]
 
             # point prompt
             point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
-                data_item["zoom_out_label"][0][cls_idx]
+                data_item["zoom_out_label"][0][0]
             )
 
             # bbox prompt
             bbox_prompt, bbox_prompt_map = self._model.processor.bbox_prompt_b(
-                data_item["zoom_out_label"][0][cls_idx]
+                data_item["zoom_out_label"][0][0]
             )
 
             point_prompt = (
@@ -131,15 +123,28 @@ class EvaluatePipeline:
 
             preds.append(pred[0][0])
             # labels.append(gt_npy)
-            labels.append(data_item["label"][0][cls_idx])
+            labels.append(data_item["label"][0][0])
+            score = dice_score(preds[-1].to(self._model.device), labels[-1].to(self._model.device))
+            avg_dice_score.update(score)
+            per_modality_scores[
+                self._dataset.modality_id2name[modality[0]]].update(score)
+            per_task_scores[task[0]].update(score)
 
-            avg_dice_score.update(dice_score(
-                preds[-1].to(self._model.device), labels[-1].to(self._model.device)))
-
-        results = {"dice": avg_dice_score.avg}
+        results = {
+            "dice": float(avg_dice_score.avg),
+            "per_modality_dice": {
+                modality_name: float(score.avg)
+                for modality_name, score in per_modality_scores.items()
+            },
+            "per_task_dice": {
+                task: float(score.avg)
+                for task, score in per_task_scores.items()
+            }
+        }
 
         if self._use_wandb:
-            wandb.log({"dice_score": results["dice"]})
+            wandb.log({"dice_score": results["dice"],
+                       "per_modality_dice": results["per_modality_dice"]})
             wandb.finish()
 
         return results

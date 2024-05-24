@@ -1,0 +1,5 @@
+--dataset_path /scratch-shared/scur1193/M3D-Seg/M3D_Seg/0000 --modalities CT
+--dataset_path /scratch-shared/scur1193/M3D-Seg/M3D_Seg/0001 --modalities CT
+--dataset_path /scratch-shared/scur1193/M3D-Seg/M3D_Seg/0002 --modalities CT
+--dataset_path /scratch-shared/scur1193/M3D-Seg/M3D_Seg/0020 --modalities CT
+--dataset_path /scratch-shared/scur1193/M3D-Seg/M3D_Seg/0008 --modalities CT
