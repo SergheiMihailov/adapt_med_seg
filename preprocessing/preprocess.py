@@ -15,6 +15,8 @@ from data_sets.promise12 import parse_promise12
 from data_sets.msd import parse_msd
 from data_sets.t2w_mri import parse_t2w_mri
 from data_sets.saml import parse_saml
+from data_sets.brats2021 import parse_brats2021
+
 
 def preprocess_image(info):
     """
@@ -95,6 +97,10 @@ def run(args: Namespace):
                                                             val_ratio=args.val_ratio)
     elif args.dataset_type == 'SAML':
         data_splits, modality_info, classes = parse_saml(args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio)
+    elif args.dataset_type == 'brats2021':
+        data_splits, modality_info, classes = parse_brats2021(args.dataset_root,
                                                         test_ratio=args.test_ratio,
                                                         val_ratio=args.val_ratio)
     else:
