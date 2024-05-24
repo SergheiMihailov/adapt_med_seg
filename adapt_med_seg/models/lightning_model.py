@@ -105,6 +105,11 @@ class SegVolLightning(LightningModule):
     def on_train_epoch_start(self):
         super().on_train_epoch_start()
         self.train()
+        self._dataset._train = True
+
+    def on_validation_epoch_start(self):
+        super().on_validation_epoch_start()
+        self._dataset._train = False
 
     def configure_optimizers(self):
         lr = getattr(self.hparams, "lr", 5e-5)
