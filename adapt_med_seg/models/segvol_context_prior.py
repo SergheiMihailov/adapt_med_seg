@@ -1,22 +1,21 @@
+from ast import List
 import logging
-import re
-from dataclasses import dataclass
-from typing import Mapping, Tuple, Type
+from typing import Optional, Tuple, Type
 
-import numpy as np
 import torch
-from peft import LoraConfig, PeftModel, get_peft_model
-from torch import Tensor, nn
+from peft import LoraConfig, get_peft_model
+from torch import nn
 from transformers import AutoModel, AutoTokenizer
 from typing_extensions import Self
 
-from SegVol.model_segvol_single import PromptEncoder as SamPromptEncoder
 from SegVol.model_segvol_single import (
     SegVol,
     SegVolConfig,
     SegVolModel,
     SegVolProcessor,
 )
+
+import torch.nn.functional as F
 
 REDUCTION = 16
 
@@ -135,6 +134,7 @@ class PosteriorPrototypeMLP(nn.Module):
         self,
         t_k: int,
         C: int,
+        feature_dim: int,  # 32*64*64 for low_res masks, 4*768 for mask tokens
         embed_dim: int = 512,
         task_prior_len: int = 1,
     ):
@@ -142,18 +142,129 @@ class PosteriorPrototypeMLP(nn.Module):
         self.embed_dim = embed_dim
         self.task_prior_len = task_prior_len
 
+        reduction = 16  # TODO: remove reduction from here once we apply it to embed_dim
+
         self.mlp = nn.Sequential(
-            nn.Linear(embed_dim * self.task_prior_len, embed_dim),
+            nn.Linear(embed_dim * self.task_prior_len, embed_dim // reduction),
             nn.ReLU(),
-            nn.Linear(embed_dim, C * t_k),
+            nn.Linear(embed_dim // reduction, C * t_k * feature_dim),
         )
 
     def forward(
         self,
         task_prior: torch.Tensor,
     ):
-
         return self.mlp(task_prior)
+
+
+class CustomMaskDecoder(nn.Module):
+    def __init__(self, pretrained_segvol_mask_decoder):
+        super(CustomMaskDecoder, self).__init__()
+        self.mask_decoder = pretrained_segvol_mask_decoder
+
+    def forward(
+        self,
+        image_embeddings: torch.Tensor,
+        text_embedding: Optional[torch.Tensor],
+        image_pe: torch.Tensor,
+        sparse_prompt_embeddings: torch.Tensor,
+        dense_prompt_embeddings: torch.Tensor,
+        multimask_output: bool,
+        output_mask_tokens: bool,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Predict masks given image and prompt embeddings.
+
+        Returns:
+          torch.Tensor: batched predicted masks
+        """
+        # print('--------------decoder here--------------')
+        masks, iou_pred = self.predict_masks(
+            image_embeddings=image_embeddings,
+            text_embedding=text_embedding,
+            image_pe=image_pe,
+            sparse_prompt_embeddings=sparse_prompt_embeddings,
+            dense_prompt_embeddings=dense_prompt_embeddings,
+            output_mask_tokens=output_mask_tokens,
+        )
+
+        if output_mask_tokens:
+            mask_tokens_out, iou_token_out = masks, iou_pred
+            return mask_tokens_out, iou_token_out
+
+        # Select the correct mask or masks for output
+        if multimask_output:
+            mask_slice = slice(1, None)
+        else:
+            mask_slice = slice(0, 1)
+
+        masks = masks[:, mask_slice, :, :, :]
+        iou_pred = iou_pred[:, mask_slice]
+
+        # Prepare output
+        return masks, iou_pred
+
+    def predict_masks(
+        self,
+        image_embeddings: torch.Tensor,
+        text_embedding: torch.Tensor,
+        image_pe: torch.Tensor,
+        sparse_prompt_embeddings: torch.Tensor,
+        dense_prompt_embeddings: torch.Tensor,
+        output_mask_tokens: bool,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Predicts masks. See 'forward' for more details."""
+        # Concatenate output tokens
+        output_tokens = torch.cat(
+            [self.mask_decoder.iou_token.weight, self.mask_decoder.mask_tokens.weight],
+            dim=0,
+        )
+        output_tokens = output_tokens.unsqueeze(0).expand(
+            sparse_prompt_embeddings.size(0), -1, -1
+        )
+        tokens = torch.cat((output_tokens, sparse_prompt_embeddings), dim=1)
+        # Expand per-image data in batch direction to be per-mask
+        if image_embeddings.shape[0] != tokens.shape[0]:
+            src = torch.repeat_interleave(image_embeddings, tokens.shape[0], dim=0)
+        else:
+            src = image_embeddings
+        src = src + dense_prompt_embeddings
+        pos_src = torch.repeat_interleave(image_pe, tokens.shape[0], dim=0)
+        b, c, h, w, d = src.shape
+
+        # Run the transformer
+        hs, src = self.mask_decoder.transformer(src, pos_src, tokens)
+        iou_token_out = hs[:, 0, :]
+        mask_tokens_out = hs[:, 1 : (1 + self.mask_decoder.num_mask_tokens), :]
+
+        if output_mask_tokens:
+            return mask_tokens_out, iou_token_out
+
+        # Upscale mask embeddings and predict masks using the mask tokens
+        src = src.transpose(1, 2).view(b, c, h, w, d)
+        upscaled_embedding = self.mask_decoder.output_upscaling(src)
+        hyper_in_list: List[torch.Tensor] = []
+        for i in range(self.mask_decoder.num_mask_tokens):
+            hyper_in_list.append(
+                self.mask_decoder.output_hypernetworks_mlps[i](mask_tokens_out[:, i, :])
+            )
+        hyper_in = torch.stack(hyper_in_list, dim=1)
+        b, c, h, w, d = upscaled_embedding.shape
+        masks = (hyper_in @ upscaled_embedding.view(b, c, h * w * d)).view(
+            b, -1, h, w, d
+        )
+
+        if text_embedding is not None:
+            text_embedding_down = self.mask_decoder.txt_align_upscaled_embedding(
+                text_embedding
+            ).unsqueeze(dim=1)
+            upscaled_embedding = upscaled_embedding.view(b, c, h * w * d)
+            sim = (text_embedding_down @ upscaled_embedding).view(b, -1, h, w, d)
+            sim = sim.repeat(1, masks.shape[1], 1, 1, 1)
+            masks = masks + sim
+        iou_pred = self.mask_decoder.iou_prediction_head(iou_token_out)
+
+        return masks, iou_pred
 
 
 class SegVolContextPriorModel(nn.Module):
@@ -188,6 +299,10 @@ class SegVolContextPriorModel(nn.Module):
             C=1,
             embed_dim=embed_dim,
             task_prior_len=1,
+            feature_dim=32 * 64 * 64,
+        )
+        self.pretrained_segvol.mask_decoder = CustomMaskDecoder(
+            pretrained_segvol_mask_decoder=self.pretrained_segvol.mask_decoder,
         )
 
         target_modules = ["query", "value", "key", "linear1", "linear2"]
@@ -248,16 +363,15 @@ class SegVolContextPriorModel(nn.Module):
 
         # test mode
         if self.test_mode:
-            logits = self.pretrained_segvol.forward_decoder(
+            logits = self.forward_decoder(
                 image_embedding,
                 img_shape,
                 text,
                 boxes,
                 points,
+                posterior_prototype=posterior_prototype,
                 # modality=modality,
             )
-
-            logits = torch.einsum("btc,bcdhw->btdhw", posterior_prototype, logits)
 
             return logits
 
@@ -304,16 +418,15 @@ class SegVolContextPriorModel(nn.Module):
         sl_loss = 0
         for prompt in prompt_options:
             bboxes, points, organs = prompt
-            logits = self.pretrained_segvol.forward_decoder(
+            logits = self.forward_decoder(
                 image_embedding,
                 img_shape,
                 text=organs,
                 boxes=bboxes,
                 points=points,
+                posterior_prototype=posterior_prototype,
                 # modality=modality,
             )
-
-            logits = torch.einsum("btc,bcdhw->btdhw", posterior_prototype, logits)
 
             # cal loss
             sl_loss_dice = self.pretrained_segvol.dice_loss.forward(
@@ -324,6 +437,85 @@ class SegVolContextPriorModel(nn.Module):
             )
             sl_loss += sl_loss_dice + sl_loss_bce
         return sl_loss
+
+    def forward_decoder(
+        self,
+        image_embedding,
+        img_shape,
+        text=None,
+        boxes=None,
+        points=None,
+        posterior_prototype=None,
+    ):
+        device = image_embedding.device
+        with torch.no_grad():
+            if boxes is not None:
+                if len(boxes.shape) == 2:
+                    boxes = boxes[:, None, :]  # (B, 1, 6)
+            if text is not None:
+                text_embedding = self.pretrained_segvol.text_encoder(
+                    text, device
+                )  # (B, 768)
+            else:
+                text_embedding = None
+        sparse_embeddings, dense_embeddings = self.pretrained_segvol.prompt_encoder(
+            points=points,
+            boxes=boxes,
+            masks=None,
+            text_embedding=text_embedding,
+        )
+
+        dense_pe = self.pretrained_segvol.prompt_encoder.get_dense_pe()
+        low_res_masks, _ = self.pretrained_segvol.mask_decoder(
+            image_embeddings=image_embedding,
+            text_embedding=text_embedding,
+            image_pe=dense_pe,
+            sparse_prompt_embeddings=sparse_embeddings,
+            dense_prompt_embeddings=dense_embeddings,
+            multimask_output=False,
+            output_mask_tokens=False,
+        )
+
+        # Low-res mask
+        # mask_tokens.shape: torch.Size([1, 1, 32, 64, 64])
+        # iou_tokens.shape: torch.Size([1, 1])
+
+        # Mask tokens
+        # mask_tokens.shape: torch.Size([1, 4, 768])
+        # iou_tokens.shape: torch.Size([1, 768])
+
+        # 2 possible approaches here:
+        # 1) apply prototype to mask tokens
+        # 2) apply prototype to low-res mask. But then, what is C' in this case?
+
+        posterior_prototype = posterior_prototype.view(1, 1, 32, 64, 64)
+
+        low_res_masks_expanded = low_res_masks.unsqueeze(
+            1
+        )  # Shape: B, 1, C, 32, 64, 64
+        posterior_prototype_expanded = posterior_prototype.unsqueeze(
+            0
+        )  # Shape: 1, T, C, 32, 64, 64
+
+        product = low_res_masks_expanded * posterior_prototype_expanded
+
+        low_res_masks_after_posterior = product.sum(dim=2)  # Shape: B, T, 32, 64, 64
+
+        # Dot product across last 3 dimensions: (T,C,H,W,D) x (T,C,H,W,D) -> (T,H,W,D)
+
+        # print(f"posterior_prototype.shape: {posterior_prototype.shape}")
+
+        # low_res_masks_after_posterior = torch.einsum(
+        #     "btc,bcdhw->btdhw", posterior_prototype, low_res_masks
+        # )
+
+        logits_per_task_after_posterior = F.interpolate(
+            low_res_masks_after_posterior,
+            size=img_shape,
+            mode="trilinear",
+            align_corners=False,
+        )
+        return logits_per_task_after_posterior
 
 
 class SegVolContextPrior(SegVolModel):
