@@ -299,7 +299,7 @@ class SegVolContextPriorModel(nn.Module):
             C=1,
             embed_dim=embed_dim,
             task_prior_len=1,
-            feature_dim=32 * 64 * 64,
+            feature_dim=1,
         )
         self.pretrained_segvol.mask_decoder = CustomMaskDecoder(
             pretrained_segvol_mask_decoder=self.pretrained_segvol.mask_decoder,
@@ -488,26 +488,29 @@ class SegVolContextPriorModel(nn.Module):
         # 1) apply prototype to mask tokens
         # 2) apply prototype to low-res mask. But then, what is C' in this case?
 
-        posterior_prototype = posterior_prototype.view(1, 1, 32, 64, 64)
+        # Approach 1
 
-        low_res_masks_expanded = low_res_masks.unsqueeze(
-            1
-        )  # Shape: B, 1, C, 32, 64, 64
-        posterior_prototype_expanded = posterior_prototype.unsqueeze(
-            0
-        )  # Shape: 1, T, C, 32, 64, 64
+        # Approach 2
+        # posterior_prototype = posterior_prototype.view(1, 1, 32, 64, 64)
 
-        product = low_res_masks_expanded * posterior_prototype_expanded
+        # low_res_masks_expanded = low_res_masks.unsqueeze(
+        #     1
+        # )  # Shape: B, 1, C, 32, 64, 64
+        # posterior_prototype_expanded = posterior_prototype.unsqueeze(
+        #     0
+        # )  # Shape: 1, T, C, 32, 64, 64
 
-        low_res_masks_after_posterior = product.sum(dim=2)  # Shape: B, T, 32, 64, 64
+        # product = F.sigmoid(low_res_masks_expanded * posterior_prototype_expanded)
 
-        # Dot product across last 3 dimensions: (T,C,H,W,D) x (T,C,H,W,D) -> (T,H,W,D)
+        # low_res_masks_after_posterior = product.sum(dim=2)  # Shape: B, T, 32, 64, 64
 
-        # print(f"posterior_prototype.shape: {posterior_prototype.shape}")
+        # Paper approach (does it make sense?)
 
-        # low_res_masks_after_posterior = torch.einsum(
-        #     "btc,bcdhw->btdhw", posterior_prototype, low_res_masks
-        # )
+        print(f"posterior_prototype.shape: {posterior_prototype.shape}")
+
+        low_res_masks_after_posterior = torch.einsum(
+            "btc,bcdhw->btdhw", posterior_prototype, low_res_masks
+        )
 
         logits_per_task_after_posterior = F.interpolate(
             low_res_masks_after_posterior,
