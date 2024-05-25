@@ -81,8 +81,6 @@ class SegVolLightning(LightningModule):
         bbox_prompt = bbox_prompt.to(self.device)
         bbox_prompt_map = bbox_prompt_map.to(self.device)
 
-        print(f"[point_prompt, point_prompt_map]: {[point_prompt, point_prompt_map]}")
-
         pred = self._model.forward_test(
             image=data_item["image"],
             zoomed_image=data_item["zoom_out_image"],

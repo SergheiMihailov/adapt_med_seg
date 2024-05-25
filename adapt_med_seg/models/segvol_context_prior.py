@@ -354,9 +354,6 @@ class SegVolContextPriorModel(nn.Module):
 
         self.prior_fusion = PriorFusion(embed_dim=embed_dim)
 
-        print(f"self.context_prior_pool: {self.context_prior_pool}")
-        print(f"self.prior_fusion: {self.prior_fusion}")
-
         self.prototype_mlp = PosteriorPrototypeMLP(
             t_k=1,  # TODO: Make this a parameter, and should be times number of tasks
             C=1,
@@ -403,7 +400,6 @@ class SegVolContextPriorModel(nn.Module):
         modality: str = "unknown",
         **kwargs,
     ):
-        print(f"boxes in forward: {boxes}")
         task = train_organs[0]  # Todo: how do we handle multiple tasks?
         modality_prior = self.context_prior_pool.get_modality_prior(modality)
         task_prior = self.context_prior_pool.get_task_prior(task)
@@ -426,7 +422,6 @@ class SegVolContextPriorModel(nn.Module):
 
         # test mode
         if self.test_mode:
-            print(f"boxes in forward 2: {boxes}")
             logits = self.forward_decoder(
                 image_embedding,
                 img_shape,
@@ -517,7 +512,6 @@ class SegVolContextPriorModel(nn.Module):
         modality_prior=None,
     ):
         device = image_embedding.device
-        print(f"boxes in forward_decoder: {boxes}")
         with torch.no_grad():
             if boxes is not None:
                 if len(boxes.shape) == 2:
