@@ -8,7 +8,8 @@ cd preprocessing
 # common
 # --dataset_root /scratch-shared/scur0402/AMOS_2022 --dataset_code amos000 --save_root /scratch-shared/scur0402/ --num_workers 4 --dataset_type AMOS
 tch-shared/scur0402/ --num_workers 4 --dataset_type AMOS                                                           
-CLASSES=("liver", "right kidney", "spleen", "left kidney")
+CLASSES=("liver" "right kidney" "spleen" "left kidney")
+# CLASSES="Non-Contrast-Enhancing Tumor Core" "Enhancing Tumor" "Edema")
 DATASET_ROOTS_ROOT="/scratch-shared/scur0402" 
 SAVE_ROOTS_ROOT="/scratch-shared/scur0402"
 NUM_WORKERS=8
@@ -16,10 +17,10 @@ SEED=42
 TEST_RATIO=0.2
 VAL_RATIO=0.2
 # dataset-specific
-DATASET_ROOTS=("AMOS2022" "BRATS2021")
-DATASET_CODES=("amos_mrct_42" "brats_mr_42")
+DATASET_ROOTS=("AMOS2022") # or ("BRATS2021")
+DATASET_CODES=("amos_mrct_42") # or ("brats_mr_42")
 SAVE_ROOTS=$DATASET_ROOTS
-DATASET_TYPES=("AMOS" "BRATS")
+DATASET_TYPES=("AMOS") # or ("BRATS2021")
 
 # iterate 4 times and preprocess each dataset
 # with the respective dataset-specific arguments

@@ -53,9 +53,9 @@ def brats2021_data_download(data_root: str) -> str:
 
 BRATS2021_LABELS = {
     # NCR: Non-Contrast-Enhancing Tumor Core, ET: Enhancing Tumor, ED: Edema
-    '1': 'NCR',
-    '2': 'ET',
-    '3': 'ED'
+    '1': 'Non-Contrast-Enhancing Tumor Core',
+    '2': 'Enhancing Tumor',
+    '3': 'Edema'
 }
 
 brats2021_image_loader = Compose(
