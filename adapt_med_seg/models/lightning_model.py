@@ -46,6 +46,8 @@ class SegVolLightning(LightningModule):
         self.processor = self._model.processor
         self.validation_step_outputs = []
 
+        self.best_score = 0.0
+
     def on_fit_start(self) -> None:
         if not hasattr(self, "_dataset") or not hasattr(self, "_cls_idx"):
             raise ValueError("Dataset not set. Call set_dataset() before training.")
@@ -82,6 +84,17 @@ class SegVolLightning(LightningModule):
                 loss = loss + _loss
 
         self.log("train_loss", loss.item(), prog_bar=True, on_step=True)
+
+        # If model is segvol_context_prior, store correlations between elements of model.context_prior_pool.modality_prior_embeddings and task_prior_embeddings
+        if self.model_name == "segvol_context_prior":
+            self.validation_step_outputs.append(
+                self._model.model.context_prior_pool.modality_prior_embeddings
+            )
+
+            self.validation_step_outputs.append(
+                self._model.model.context_prior_pool.task_prior_embeddings
+            )
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -129,6 +142,7 @@ class SegVolLightning(LightningModule):
 
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
+
         return score
 
     def test_step(self, batch, batch_idx):
@@ -141,13 +155,15 @@ class SegVolLightning(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
-            filter(lambda param: param.requires_grad, self.parameters()), lr=1e-4
+            filter(lambda param: param.requires_grad, self.parameters()),
+            lr=1e-3,
+            weight_decay=1e-2,
         )
 
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
             mode="min",
-            factor=0.1,
+            factor=0.3,
             patience=3,
             verbose=True,
             cooldown=5,

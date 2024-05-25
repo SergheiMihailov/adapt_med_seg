@@ -57,14 +57,15 @@ def main():
     parser.add_argument("--modalities", default=["MRI", "CT"], nargs="+")
     args = parser.parse_args()
 
-    # if args.use_wandb:
-    wandb_logger = WandbLogger(project="dl2_g33")
-
     seed_everything(args.seed)
     model = SegVolLightning(
         test_mode=False,
         **vars(args),
     )
+
+    # if args.use_wandb:
+    wandb_logger = WandbLogger(project="dl2_g33")
+    wandb_logger.watch(model, log="all", log_freq=100)
 
     _dataset = MedSegDataset(
         processor=model._model.processor,
