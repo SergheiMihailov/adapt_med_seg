@@ -118,14 +118,24 @@ class SegVolLightning(LightningModule):
         self._dataset._train = False
 
     def configure_optimizers(self):
-        lr = getattr(self.hparams, "lr", 5e-5)
-        betas = getattr(self.hparams, "betas", (0.9, 0.999))
+        lr = getattr(self.hparams, "lr", 1e-3)
+        # betas = getattr(self.hparams, "betas", (0.9, 0.999))
         eps = getattr(self.hparams, "eps", 1e-8)
-        optimizer = torch.optim.AdamW(
+        optimizer = torch.optim.RMSprop(
             filter(lambda param: param.requires_grad, self.parameters()),
             lr=lr,
-            betas=betas,
+            # betas=betas,
             eps=eps,
         )
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.3,
+            patience=3,
+            verbose=True,
+            cooldown=5,
+            min_lr=1e-7,
+        )
+
         # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-        return optimizer
+        return [optimizer], [{"scheduler": scheduler, "monitor": "train_loss"}]

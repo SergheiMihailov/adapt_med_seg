@@ -22,10 +22,6 @@ def main():
         model_name=model_name, modalities=modalities, test_mode=False, **kwargs
     )
 
-    # if args.use_wandb:
-    wandb_logger = WandbLogger(project="dl2_g33")
-    wandb_logger.watch(model, log="all", log_freq=100)
-
     _dataset = MedSegDataset(
         processor=model._model.processor,
         dataset_path=args.dataset_path,
@@ -38,12 +34,19 @@ def main():
         batch_size=args.batch_size, max_len_samples=args.max_len_samples
     )
 
-    # loggers = [TensorBoardLogger(args.log_dir)]
-    # if args.use_wandb:
-    #     wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
-    #     loggers.append(wandb_logger)
+    loggers = [TensorBoardLogger(args.log_dir)]
+    if args.use_wandb:
+        wandb_logger = WandbLogger(
+            project=args.wandb_project,
+            save_dir=args.log_dir,
+            log_model="all",
+            name=f"{model_name}_{args.dataset_path}",
+        )
+        wandb_logger.watch(model, log="all", log_freq=10)
+        loggers.append(wandb_logger)
 
     lr_monitor = LearningRateMonitor(logging_interval="step")
+    checkpoint_callback = ModelCheckpoint(monitor="val_dice_score", mode="max")
 
     trainer = Trainer(
         max_epochs=args.epochs,
@@ -55,7 +58,7 @@ def main():
         accumulate_grad_batches=args.accumulate_grad_batches,
         # override the default if we have less than 50 samples
         log_every_n_steps=min(args.max_len_samples, 50) if args.max_len_samples else 50,
-        callbacks=[lr_monitor],
+        callbacks=[lr_monitor, checkpoint_callback],
     )
     trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)
 

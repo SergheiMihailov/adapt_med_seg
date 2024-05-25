@@ -1170,6 +1170,9 @@ def sliding_window_inference(
                 boxes = (
                     generate_box(pseudo_label.squeeze()).unsqueeze(0).float().to(device)
                 )
+
+        print(f"text to predictor: {text}")
+        print(f"modality to predictor: {modality}")
         seg_prob_out = predictor(
             window_data, text, boxes, points, modality=modality, train_organs=text
         )  # batched patch segmentation
