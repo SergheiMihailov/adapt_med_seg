@@ -85,7 +85,7 @@ class SegVolModel(PreTrainedModel):
             #     point_prompt: {point_prompt.dtype}\n\
             #     bbox_prompt_map: {bbox_prompt_map.dtype}\n\
             #     point_prompt_map: {point_prompt_map.dtype}")
-
+            print(f"bbox_prompt in forward_test: {bbox_prompt}")
             logits_global_single = self.model(
                 zoomed_image,
                 text=text_prompt,

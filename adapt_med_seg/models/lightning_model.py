@@ -35,6 +35,7 @@ class SegVolLightning(LightningModule):
         self._dataset = dataset
 
     def training_step(self, batch, batch_idx):
+        return None
         data_item, gt_npy, modality, task = batch
         data_item["image"] = data_item["image"].to(self.device)
 
@@ -80,6 +81,8 @@ class SegVolLightning(LightningModule):
         point_prompt_map = point_prompt_map.to(self.device)
         bbox_prompt = bbox_prompt.to(self.device)
         bbox_prompt_map = bbox_prompt_map.to(self.device)
+
+        print(f"[point_prompt, point_prompt_map]: {[point_prompt, point_prompt_map]}")
 
         pred = self._model.forward_test(
             image=data_item["image"],
