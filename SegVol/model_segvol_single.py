@@ -1172,9 +1172,12 @@ def sliding_window_inference(
                     generate_box(pseudo_label.squeeze()).unsqueeze(0).float().to(device)
                 )
         seg_prob_out = predictor(
-            window_data, text, boxes, points,
-            modality=modality
-            train_organs=train_organs
+            window_data,
+            text,
+            boxes,
+            points,
+            modality=modality,
+            train_organs=train_organs,
         )  # batched patch segmentation
         #############
         # convert seg_prob_out to tuple seg_prob_tuple, this does not allocate new memory.
