@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:59:00
-#SBATCH --mem=32000M
+#SBATCH --mem=120G
 #SBATCH --array=1-5%5
 #SBATCH --output=/home/scur0402/jobs/logs/SegVol_CT_%A_%a.out
 
