@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
 #SBATCH --job-name=AMOS_preprocess
 #SBATCH --ntasks=1
 #SBATCH --time=00:59:00
@@ -17,16 +18,16 @@ cd $WORKDIR
 source $WORKDIR/.preprocess_venv/bin/activate
 cd preprocessing
 
-#CLASSES=("liver" "right kidney" "spleen" "left kidney")
-CLASSES='Non-Contrast-Enhancing_Tumor_Core Enhancing_Tumor Edema'
+CLASSES="spleen right_kidney left_kidney gall_bladder esophagus liver stomach arota postcava pancreas right_adrenal_gland left_adrenal_gland duodenum bladder prostate/uterus"
+#CLASSES='Non-Contrast-Enhancing_Tumor_Core Enhancing_Tumor Edema'
 DATASET_ROOTS_ROOT="/scratch-shared/scur0402" 
 SAVE_ROOTS_ROOT="/scratch-shared/scur0402"
-NUM_WORKERS=8
+NUM_WORKERS=32
 SEED=42
 TEST_RATIO=0.2
 VAL_RATIO=0.2
 # dataset-specific
-DATASET_ROOTS=("AMOS2022")
+DATASET_ROOTS=("AMOS_2022")
 #DATASET_ROOTS=("BRATS2021")
 DATASET_CODES=("amos_mrct_42")
 #DATASET_CODES=("brats_mr_42")

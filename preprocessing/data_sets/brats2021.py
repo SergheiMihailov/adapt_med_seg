@@ -8,7 +8,6 @@ Defines:
 
 import os
 import tarfile as tf
-import kaggle
 import requests
 from typing import Dict, List, Tuple
 from monai.transforms import (
@@ -37,6 +36,7 @@ def brats2021_data_download(data_root: str) -> str:
 
     # download and extract the data
     if not os.path.exists(brats2021_data_dir):
+        import kaggle
         kaggle.api.dataset_download_cli('dschettler8845/brats-2021-task1',
                                         path=data_root, force=False, unzip=True)
         # extract the data
