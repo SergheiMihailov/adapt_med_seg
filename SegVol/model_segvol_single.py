@@ -1045,7 +1045,6 @@ def sliding_window_inference(
     use_box = kwargs["use_box"]
     use_point = kwargs["use_point"]
     modality = kwargs["modality"]  # CT or MR
-    train_organs = kwargs["train_organs"]
     assert not (use_box and use_point)
     compute_dtype = inputs.dtype
     num_spatial_dims = len(inputs.shape) - 2
@@ -1172,12 +1171,7 @@ def sliding_window_inference(
                     generate_box(pseudo_label.squeeze()).unsqueeze(0).float().to(device)
                 )
         seg_prob_out = predictor(
-            window_data,
-            text,
-            boxes,
-            points,
-            modality=modality,
-            train_organs=train_organs,
+            window_data, text, boxes, points, modality=modality, train_organs=text
         )  # batched patch segmentation
         #############
         # convert seg_prob_out to tuple seg_prob_tuple, this does not allocate new memory.
