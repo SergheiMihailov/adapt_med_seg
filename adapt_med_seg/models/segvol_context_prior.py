@@ -380,13 +380,13 @@ class SegVolContextPriorModel(nn.Module):
 
         self.pretrained_segvol = get_peft_model(self.pretrained_segvol, peft_config)
 
-    def forward_train(self, image, tasks, train_labels, modality):
+    def forward_train(self, image, train_organs, train_labels, modality):
         loss = self.model(
             image,
             text=None,
             boxes=None,
             points=None,
-            tasks=tasks,
+            train_organs=train_organs,
             train_labels=train_labels,
             modality=modality,
         )
@@ -399,12 +399,12 @@ class SegVolContextPriorModel(nn.Module):
         text=None,
         boxes=None,
         points=None,
-        tasks: list[str] = ["unknown"],
+        train_organs: list[str] = ["unknown"],
         modality: str = "unknown",
         **kwargs,
     ):
-        print(f'boxes in forward: {boxes}')
-        task = tasks[0]  # Todo: how do we handle multiple tasks?
+        print(f"boxes in forward: {boxes}")
+        task = train_organs[0]  # Todo: how do we handle multiple tasks?
         modality_prior = self.context_prior_pool.get_modality_prior(modality)
         task_prior = self.context_prior_pool.get_task_prior(task)
 
@@ -426,7 +426,7 @@ class SegVolContextPriorModel(nn.Module):
 
         # test mode
         if self.test_mode:
-            print(f'boxes in forward 2: {boxes}')
+            print(f"boxes in forward 2: {boxes}")
             logits = self.forward_decoder(
                 image_embedding,
                 img_shape,
@@ -447,7 +447,7 @@ class SegVolContextPriorModel(nn.Module):
             image,
             image_embedding,
             img_shape,
-            tasks,
+            train_organs,
             train_labels,
             modality=modality,
             task_prior=task_prior,
@@ -517,7 +517,7 @@ class SegVolContextPriorModel(nn.Module):
         modality_prior=None,
     ):
         device = image_embedding.device
-        print(f'boxes in forward_decoder: {boxes}')
+        print(f"boxes in forward_decoder: {boxes}")
         with torch.no_grad():
             if boxes is not None:
                 if len(boxes.shape) == 2:

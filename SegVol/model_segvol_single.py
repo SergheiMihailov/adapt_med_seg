@@ -163,13 +163,13 @@ class SegVolModel(PreTrainedModel):
         ] = logits_single_cropped
         return logits_global_single
 
-    def forward_train(self, image, tasks, train_labels, modality):
+    def forward_train(self, image, train_organs, train_labels, modality):
         loss = self.model(
             image,
             text=None,
             boxes=None,
             points=None,
-            tasks=tasks,
+            train_organs=train_organs,
             train_labels=train_labels,
             modality=modality,
         )
@@ -189,7 +189,7 @@ class SegVolModel(PreTrainedModel):
         else:
             return self.forward_train(
                 kwargs["image"],
-                kwargs["tasks"],
+                kwargs["train_organs"],
                 kwargs["train_labels"],
                 kwargs["modality"],
             )
@@ -570,7 +570,7 @@ class SegVol(nn.Module):
             image,
             image_embedding,
             img_shape,
-            kwargs["tasks"],
+            kwargs["train_organs"],
             kwargs["train_labels"],
             kwargs["modality"],
         )
@@ -1170,6 +1170,7 @@ def sliding_window_inference(
                 boxes = (
                     generate_box(pseudo_label.squeeze()).unsqueeze(0).float().to(device)
                 )
+        print(f"boxes to predictor: {boxes}")
         seg_prob_out = predictor(
             window_data, text, boxes, points
         )  # batched patch segmentation

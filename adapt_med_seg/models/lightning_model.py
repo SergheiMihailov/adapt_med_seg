@@ -35,7 +35,6 @@ class SegVolLightning(LightningModule):
         self._dataset = dataset
 
     def training_step(self, batch, batch_idx):
-        return None
         data_item, gt_npy, modality, task = batch
         data_item["image"] = data_item["image"].to(self.device)
 
@@ -43,11 +42,11 @@ class SegVolLightning(LightningModule):
         # this is a mask ground truth
         gt_label = data_item["label"][0].to(self.device)
 
-        tasks = task
+        train_organs = task
 
         loss = self._model.forward_train(
             image=data_item["image"],
-            tasks=tasks,
+            train_organs=train_organs,
             train_labels=gt_label,
             modality=modality,
         )
