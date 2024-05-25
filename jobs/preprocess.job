@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH --partition=cpu
+#SBATCH --gpus=1
+#SBATCH --job-name=preprocess
+#SBATCH --ntasks=1
+#SBATCH --time=00:59:00
+#SBATCH --output=/home/scur0402/jobs/logs/preprocess_%A.out
+
+module purge
+module load 2023
+module load Python/3.11.3-GCCcore-12.3.0
+
+# curl -sSL https://install.python-poetry.org | python3 -
+
+# shared home dir
+WORKDIR=/home/scur0402/Miki/adapt_med_seg
+cd $WORKDIR
+source $WORKDIR/.preprocess_venv/bin/activate
+
+srun $WORKDIR/jobs/preprocess.sh
+
