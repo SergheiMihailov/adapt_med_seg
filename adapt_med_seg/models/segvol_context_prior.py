@@ -395,11 +395,11 @@ class SegVolContextPriorModel(nn.Module):
     def forward(
         self,
         image,
-        train_labels=None,
         text=None,
         boxes=None,
         points=None,
         train_organs: list[str] = ["unknown"],
+        train_labels=None,
         modality: str = "unknown",
         **kwargs,
     ):
