@@ -1,11 +1,12 @@
 import numpy as np
 
+
 def process_ct_image(image_ndarray):
     """
-        Process the CT image. 
-        Filter out the background (less than the mean value),
-        clip the values to the 99.95th percentile of the foreground values,
-        and standardize the values by the mean and std of the foreground.
+    Process the CT image.
+    Filter out the background (less than the mean value),
+    clip the values to the 99.95th percentile of the foreground values,
+    and standardize the values by the mean and std of the foreground.
     """
     ct_voxel_ndarray = image_ndarray.copy()
     ct_voxel_ndarray = ct_voxel_ndarray.flatten()
@@ -22,9 +23,10 @@ def process_ct_image(image_ndarray):
     image_ndarray = (image_ndarray - mean) / max(std, 1e-8)
     return image_ndarray
 
+
 def process_mr_image(image_ndarray):
     """
-        Process the MR image
+    Process the MR image
     """
     # for now this is the same as the CT image
     # TODO: implement a more sophisticated preprocessing method

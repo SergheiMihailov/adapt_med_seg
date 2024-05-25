@@ -9,6 +9,7 @@ from adapt_med_seg.models.segvol_lora import SegVolLoRA
 from adapt_med_seg.models.segvol_moe import SegVolMoE
 from adapt_med_seg.utils.initializers import get_model
 
+
 class SegVolLightning(LightningModule):
     def __init__(
         self, model_name: str, modalities: list[str], test_mode: bool = False, **kwargs
@@ -51,6 +52,7 @@ class SegVolLightning(LightningModule):
         )
 
         self.log("train_loss", loss.item(), prog_bar=True, on_step=True)
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -94,8 +96,12 @@ class SegVolLightning(LightningModule):
         preds = pred[0][0].to(self.device)
         labels = data_item["label"][0][0].to(self.device)
 
+        preds = preds.to(self.device)
+        labels = labels.to(self.device)
+
         score = dice_score(preds, labels)
         self.log("val_dice_score", score, prog_bar=True, on_epoch=True)
+
         return score
 
     def test_step(self, batch, batch_idx):

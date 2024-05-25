@@ -5,6 +5,12 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from adapt_med_seg.utils.cli import parse_arguments
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
+from pytorch_lightning.callbacks import LearningRateMonitor
+import wandb
+
+api = wandb.Api()
+
+
 def main():
     args = parse_arguments()
     kwargs = vars(args)
@@ -13,11 +19,12 @@ def main():
     model_name = kwargs.pop("model_name")
     modalities = kwargs.pop("modalities")
     model = SegVolLightning(
-        model_name=model_name,
-        modalities=modalities,
-        test_mode=False,
-        **kwargs
+        model_name=model_name, modalities=modalities, test_mode=False, **kwargs
     )
+
+    # if args.use_wandb:
+    wandb_logger = WandbLogger(project="dl2_g33")
+    wandb_logger.watch(model, log="all", log_freq=100)
 
     _dataset = MedSegDataset(
         processor=model._model.processor,
@@ -28,13 +35,15 @@ def main():
 
     model.set_dataset(_dataset)
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(
-        batch_size=args.batch_size, max_len_samples=args.max_len_samples)
+        batch_size=args.batch_size, max_len_samples=args.max_len_samples
+    )
 
     # loggers = [TensorBoardLogger(args.log_dir)]
     # if args.use_wandb:
     #     wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
     #     loggers.append(wandb_logger)
 
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = Trainer(
         max_epochs=args.epochs,
@@ -46,6 +55,7 @@ def main():
         accumulate_grad_batches=args.accumulate_grad_batches,
         # override the default if we have less than 50 samples
         log_every_n_steps=min(args.max_len_samples, 50) if args.max_len_samples else 50,
+        callbacks=[lr_monitor],
     )
     trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)
 
@@ -59,7 +69,8 @@ def main():
         )
         model.set_dataset(test_data)
         test_dataloader = test_data.get_test_dataloader(
-            batch_size=args.batch_size, max_len_samples=args.max_len_test_samples)
+            batch_size=args.batch_size, max_len_samples=args.max_len_test_samples
+        )
         trainer.test(model, test_dataloader)
 
 
