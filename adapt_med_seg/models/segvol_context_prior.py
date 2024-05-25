@@ -43,17 +43,19 @@ class ContextPriorPool(nn.Module):
 
         self.task_prior_embeddings = nn.ParameterDict(
             {
-                task: nn.Parameter(torch.zeros(task_prior_len, embed_dim, dtype=dtype, device="cuda"))
+                task: nn.Parameter(
+                    torch.zeros(task_prior_len, embed_dim, dtype=dtype, device="cuda")
+                )
                 for task in self.tasks
             }
         )
 
-
-
         self.modality_prior_embeddings = nn.ParameterDict(
             {
                 modality: nn.Parameter(
-                    torch.zeros(modality_prior_len, embed_dim, dtype=dtype, device="cuda")
+                    torch.zeros(
+                        modality_prior_len, embed_dim, dtype=dtype, device="cuda"
+                    )
                 )
                 for modality in self.modalities
             }
@@ -64,12 +66,16 @@ class ContextPriorPool(nn.Module):
 
     def add_task_prior(self, task: str):
         self.task_prior_embeddings[task] = nn.Parameter(
-            torch.zeros(self.modality_prior_len, self.embed_dim, dtype=self.dtype, device="cuda")
+            torch.zeros(
+                self.modality_prior_len, self.embed_dim, dtype=self.dtype, device="cuda"
+            )
         )
 
     def add_modality_prior(self, modality: str):
         self.modality_prior_embeddings[modality] = nn.Parameter(
-            torch.zeros(self.task_prior_len, self.embed_dim, dtype=self.dtype, device="cuda")
+            torch.zeros(
+                self.task_prior_len, self.embed_dim, dtype=self.dtype, device="cuda"
+            )
         )
 
     def get_task_prior(self, task: str):
@@ -374,13 +380,13 @@ class SegVolContextPriorModel(nn.Module):
 
         self.pretrained_segvol = get_peft_model(self.pretrained_segvol, peft_config)
 
-    def forward_train(self, image, train_organs, train_labels, modality):
+    def forward_train(self, image, tasks, train_labels, modality):
         loss = self.model(
             image,
             text=None,
             boxes=None,
             points=None,
-            train_organs=train_organs,
+            tasks=tasks,
             train_labels=train_labels,
             modality=modality,
         )
@@ -389,15 +395,15 @@ class SegVolContextPriorModel(nn.Module):
     def forward(
         self,
         image,
-        train_labels,
+        train_labels=None,
         text=None,
         boxes=None,
         points=None,
-        train_organs: str = "unknown",
+        tasks: list[str] = ["unknown"],
         modality: str = "unknown",
         **kwargs,
     ):
-        task = train_organs[0]  # Todo: how do we handle multiple tasks?
+        task = tasks[0]  # Todo: how do we handle multiple tasks?
         modality_prior = self.context_prior_pool.get_modality_prior(modality)
         task_prior = self.context_prior_pool.get_task_prior(task)
 
@@ -433,11 +439,13 @@ class SegVolContextPriorModel(nn.Module):
 
         # train mode
         ## sl
+        if train_labels is None:
+            raise ValueError("train_labels is None in training mode")
         sl_loss = self.supervised_forward(
             image,
             image_embedding,
             img_shape,
-            train_organs,
+            tasks,
             train_labels,
             modality=modality,
             task_prior=task_prior,
@@ -620,11 +628,11 @@ class SegVolContextPrior(SegVolModel):
 
         self.processor = SegVolProcessor(spatial_size=self.config.spatial_size)
 
-        if self.device == 'cuda':
-          self.to_cuda()
+        if self.device == "cuda":
+            self.to_cuda()
 
-        if self.device == 'cpu':
-          self.to_cpu()
+        if self.device == "cpu":
+            self.to_cpu()
 
     def eval(self) -> Self:
         self.model.train(False)

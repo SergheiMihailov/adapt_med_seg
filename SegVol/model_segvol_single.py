@@ -163,13 +163,13 @@ class SegVolModel(PreTrainedModel):
         ] = logits_single_cropped
         return logits_global_single
 
-    def forward_train(self, image, train_organs, train_labels, modality):
+    def forward_train(self, image, tasks, train_labels, modality):
         loss = self.model(
             image,
             text=None,
             boxes=None,
             points=None,
-            train_organs=train_organs,
+            tasks=tasks,
             train_labels=train_labels,
             modality=modality,
         )
@@ -189,7 +189,7 @@ class SegVolModel(PreTrainedModel):
         else:
             return self.forward_train(
                 kwargs["image"],
-                kwargs["train_organs"],
+                kwargs["tasks"],
                 kwargs["train_labels"],
                 kwargs["modality"],
             )
@@ -570,7 +570,7 @@ class SegVol(nn.Module):
             image,
             image_embedding,
             img_shape,
-            kwargs["train_organs"],
+            kwargs["tasks"],
             kwargs["train_labels"],
             kwargs["modality"],
         )

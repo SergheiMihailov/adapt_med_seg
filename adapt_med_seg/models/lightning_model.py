@@ -42,11 +42,11 @@ class SegVolLightning(LightningModule):
         # this is a mask ground truth
         gt_label = data_item["label"][0].to(self.device)
 
-        train_organs = task
+        tasks = task
 
         loss = self._model.forward_train(
             image=data_item["image"],
-            train_organs=train_organs,
+            tasks=tasks,
             train_labels=gt_label,
             modality=modality,
         )

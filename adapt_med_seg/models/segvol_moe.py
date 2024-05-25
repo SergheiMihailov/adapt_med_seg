@@ -40,13 +40,11 @@ class SegVolMoE(SegVolLoRA):
                 modality,
             )
 
-    def forward_train(self, image, train_organs, train_labels, modality):
+    def forward_train(self, image, tasks, train_labels, modality):
         if modality != "1" and modality != 1 and modality != "MRI":
             # CT mode
             with self.disable_adapters():
-                return super().forward_train(
-                    image, train_organs, train_labels, modality
-                )
+                return super().forward_train(image, tasks, train_labels, modality)
         else:
             # MRI mode
-            return super().forward_train(image, train_organs, train_labels, modality)
+            return super().forward_train(image, tasks, train_labels, modality)
