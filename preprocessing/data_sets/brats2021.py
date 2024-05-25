@@ -17,6 +17,7 @@ from monai.transforms import (
     Compose,
     ToNumpy
 )
+from monai.data.image_reader import NibabelReader
 
 from util import SPLIT_NAMES, three_way_split, load_callback
 
@@ -60,7 +61,7 @@ BRATS2021_LABELS = {
 
 brats2021_image_loader = Compose(
     [
-        LoadImage(),
+        LoadImage(reader=NibabelReader),
         EnsureChannelFirst(channel_dim="no_channel"),
         ToNumpy()
     ])
@@ -92,9 +93,9 @@ def parse_brats2021(data_root: str, val_ratio: float = 0.2, test_ratio: float = 
     def process_sample(sample_dir: str, sample_id: str):
         sample = {}
         for type_ in classes:
-            modality_path = os.path.join(sample_dir, f'{sample_id}_{type_}.nii.gz')
+            modality_path = os.path.join(sample_dir, f'{prefix}{sample_id}_{type_}.nii.gz')
             sample[type_] = modality_path
-        label_path = os.path.join(sample_dir, f'{sample_id}_seg.nii.gz')
+        label_path = os.path.join(sample_dir, f'{prefix}{sample_id}_seg.nii.gz')
         sample['label'] = label_path
         return sample
 
@@ -111,7 +112,7 @@ def parse_brats2021(data_root: str, val_ratio: float = 0.2, test_ratio: float = 
         for type_ in classes:
             image_path = os.path.join(data_root, sample_dir, sample[type_])
             image_loader = load_callback(brats2021_image_loader, image_path)
-            data_list.append((sample_id, image_loader, label_loader))
+            data_list.append((f'{sample_id}_{type_}', image_loader, label_loader))
             modality_list.append('1') # MRI
 
     train_set, val_set, test_set = three_way_split(data_list, modality_list,

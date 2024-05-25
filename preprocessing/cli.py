@@ -70,5 +70,5 @@ def parse_arguments():
     for idx, c in enumerate(args.classes):
         if isinstance(c, list):
             args.classes[idx] = ''.join(c)
-
+        args.classes[idx] = args.classes[idx].replace('_', ' ')
     return args

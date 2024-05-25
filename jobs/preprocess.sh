@@ -6,8 +6,7 @@ cd preprocessing
 # CLI arguments
 
 # common
-# --dataset_root /scratch-shared/scur0402/AMOS_2022 --dataset_code amos000 --save_root /scratch-shared/scur0402/ --num_workers 4 --dataset_type AMOS
-tch-shared/scur0402/ --num_workers 4 --dataset_type AMOS                                                           
+
 CLASSES=("liver" "right kidney" "spleen" "left kidney")
 # CLASSES="Non-Contrast-Enhancing Tumor Core" "Enhancing Tumor" "Edema")
 DATASET_ROOTS_ROOT="/scratch-shared/scur0402" 
