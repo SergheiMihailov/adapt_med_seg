@@ -79,7 +79,7 @@ class ContextPriorPool(nn.Module):
         )
 
     def get_task_prior(self, task: str):
-        print(f"Getting task prior for task: {task}")
+        # print(f"Getting task prior for task: {task}")
         if task not in self.task_prior_embeddings:
             print(f"Task prior not found for task: {task}, adding it now")
             self.add_task_prior(task)
@@ -87,7 +87,7 @@ class ContextPriorPool(nn.Module):
         return self.task_prior_embeddings[task]
 
     def get_modality_prior(self, modality: str):
-        print(f"Getting modality prior for modality: {modality}")
+        # print(f"Getting modality prior for modality: {modality}")
         if modality not in self.modality_prior_embeddings:
             print(f"Modality prior not found for modality: {modality}, adding it now")
             self.add_modality_prior(modality)
