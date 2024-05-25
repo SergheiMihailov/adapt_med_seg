@@ -38,31 +38,38 @@ class ContextPriorPool(nn.Module):
         self.modalities = modalities
         self.embed_dim = embed_dim
         self.dtype = dtype
+        self.modality_prior_len = modality_prior_len
+        self.task_prior_len = task_prior_len
 
         self.task_prior_embeddings = nn.ParameterDict(
             {
-                task: nn.Parameter(torch.zeros(task_prior_len, embed_dim, dtype=dtype))
+                task: nn.Parameter(torch.zeros(task_prior_len, embed_dim, dtype=dtype, device="cuda"))
                 for task in self.tasks
             }
         )
 
+
+
         self.modality_prior_embeddings = nn.ParameterDict(
             {
                 modality: nn.Parameter(
-                    torch.zeros(modality_prior_len, embed_dim, dtype=dtype)
+                    torch.zeros(modality_prior_len, embed_dim, dtype=dtype, device="cuda")
                 )
                 for modality in self.modalities
             }
         )
 
+        self.task_prior_embeddings.to("cuda")
+        self.modality_prior_embeddings.to("cuda")
+
     def add_task_prior(self, task: str):
         self.task_prior_embeddings[task] = nn.Parameter(
-            torch.zeros(self.modality_prior_len, self.embed_dim, dtype=self.dtype)
+            torch.zeros(self.modality_prior_len, self.embed_dim, dtype=self.dtype, device="cuda")
         )
 
     def add_modality_prior(self, modality: str):
         self.modality_prior_embeddings[modality] = nn.Parameter(
-            torch.zeros(self.task_prior_len, self.embed_dim, dtype=self.dtype)
+            torch.zeros(self.task_prior_len, self.embed_dim, dtype=self.dtype, device="cuda")
         )
 
     def get_task_prior(self, task: str):
@@ -80,12 +87,6 @@ class ContextPriorPool(nn.Module):
             self.add_modality_prior(modality)
 
         return self.modality_prior_embeddings[modality]
-
-    def to(self, device):
-        for prior in self.task_prior_embeddings.values():
-            prior.to(device)
-        for prior in self.modality_prior_embeddings.values():
-            prior.to(device)
 
 
 class PriorFusion(nn.Module):
@@ -325,8 +326,8 @@ class SegVolContextPriorModel(nn.Module):
         pretrained_segvol: SegVolModel,
         config: SegVolConfig,
         test_mode: bool = False,
-        tasks: list[str] = ["prostate"],
-        modalities: list[str] = ["MRI"],
+        tasks: list[str] = ["unknown"],
+        modalities: list[str] = ["unknown"],
         embed_dim: int = 768,
     ):
         super(SegVolContextPriorModel, self).__init__()
@@ -346,6 +347,10 @@ class SegVolContextPriorModel(nn.Module):
         )
 
         self.prior_fusion = PriorFusion(embed_dim=embed_dim)
+
+        print(f"self.context_prior_pool: {self.context_prior_pool}")
+        print(f"self.prior_fusion: {self.prior_fusion}")
+
         self.prototype_mlp = PosteriorPrototypeMLP(
             t_k=1,  # TODO: Make this a parameter, and should be times number of tasks
             C=1,
@@ -614,6 +619,12 @@ class SegVolContextPrior(SegVolModel):
         self.model.pretrained_segvol.text_encoder.tokenizer = clip_tokenizer
 
         self.processor = SegVolProcessor(spatial_size=self.config.spatial_size)
+
+        if self.device == 'cuda':
+          self.to_cuda()
+
+        if self.device == 'cpu':
+          self.to_cpu()
 
     def eval(self) -> Self:
         self.model.train(False)
