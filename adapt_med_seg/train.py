@@ -57,8 +57,6 @@ def main():
     parser.add_argument("--modalities", default=["MRI", "CT"], nargs="+")
     args = parser.parse_args()
 
-    print(args.use_wandb)
-
     # if args.use_wandb:
     wandb_logger = WandbLogger(project="dl2_g33")
 
