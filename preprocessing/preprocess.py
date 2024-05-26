@@ -24,6 +24,7 @@ def preprocess_image(info):
     """
     name, img_loader, label_loader, modality, label_map, save_path = info
     # check if the case already exists
+    print(save_path, name)
     case_path = os.path.join(save_path, name)
     os.makedirs(case_path, exist_ok=True)
     if os.path.exists(os.path.join(case_path, 'image.npy'))\

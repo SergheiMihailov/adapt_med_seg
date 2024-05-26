@@ -151,6 +151,9 @@ def parse_chaos(data_root: str,
     data_splits['test'] = test_split[0]
     modality_info['test'] = test_split[1]
 
+    splits_list.clear()
+    mod_list.clear()
+
     ###########
     # process MRI data
     mr_data_root = os.path.join(data_root, 'MR')
@@ -181,18 +184,17 @@ def parse_chaos(data_root: str,
         # append, while keeping the in and out phase images together.
         # they come from the same patient so its not good to have them in different splits
         splits_list.append(((f'mr_{idx}_in', image_loader_in, label_loader_dual),
-                            (f'mr_{idx}_out', image_loader_out,
-                             label_loader_dual),
+                            (f'mr_{idx}_out', image_loader_out, label_loader_dual),
                             (f'mr_{idx}_spir', image_loader_spir, label_loader_spir)))
         mod_list.append(('1', '1', '1'))
     # split the data
     train_split, val_split, test_split = three_way_split(
         splits_list, mod_list, test_ratio=test_ratio, val_ratio=val_ratio)
-    data_splits['train'] += train_split[0]
-    modality_info['train'] += train_split[1]
-    data_splits['val'] += val_split[0]
-    modality_info['val'] += val_split[1]
-    data_splits['test'] += test_split[0]
-    modality_info['test'] += test_split[1]
+    data_splits['train'] += [t for tt in train_split[0] for t in tt] # tuple of tuples
+    modality_info['train'] += [t for tt in train_split[1] for t in tt]
+    data_splits['val'] += [t for tt in val_split[0] for t in tt]
+    modality_info['val'] += [t for tt in val_split[1] for t in tt]
+    data_splits['test'] += [t for tt in test_split[0] for t in tt]
+    modality_info['test'] += [t for tt in test_split[1] for t in tt]
 
     return data_splits, modality_info, chaos_classes
