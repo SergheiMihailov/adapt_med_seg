@@ -1,5 +1,8 @@
 # SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning
+### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta 
+> **Supervised by**: Stefanos Achlatis, s.s.achlatis@uva.nl
 
+## Introduction
 
 Medical image segmentation (MIS) is a significant challenge in the field of computer vision due to several complexities. Firstly, the data comprises various image modalities, such as Computed Tomography (CT), Magnetic Resonance Imaging (MRI), Endoscopy, and Ultrasound (US), each employing fundamentally different techniques. Secondly, these medical images target different parts of the human anatomy, resulting in substantial variations in label space and data distribution. Thirdly, unlike conventional images, acquiring large-scale medical data is challenging due to the high costs of annotation and privacy concerns. This difficulty is exacerbated in the case of volumetric (3D) medical images, which are particularly hard to obtain, store, and annotate, and require significant computational resources for processing [[1]](#ref1). Consequently, developing a universal model that demonstrates robust and consistent performance across the entire MIS domain is exceptionally challenging.
 
@@ -19,6 +22,10 @@ To develop a truly universal medical image segmentation model, Gao et al. (2024)
 
 ## Methodology
 
+### Low Rank Adaptation (LoRA)
+
+### Mixture of Adapters (MoA)
+
 ### Context-prior learning
 
 Medical segmentation models focus predominantly on fine-tuning to specific modalities. However, this detracts from their generalizability and prevents learning of features useful across modalities. SegVol is a state-of-the-art model for medical image segmentation on the CT modality. Whereas it shows promising zero-shot results on the MRI modality, it underperforms compared to specialized MRI segmentation models. We aim to bring the performance of SegVol to state-of-the-art on the MRI modality, while preserving its performance on the CT modality. To that end we explore learning context-prior tokens for each task and modality (as proposed for medical image segmentation by [Gao et al. 2024](https://arxiv.org/pdf/2306.02416)). The idea is to let the segmentation model learn modality- and task-specific tokens that condition image encoding and mask decoding. These tokens are then fused via a transformer with the image representations from the image encoder, resulting in an updated image representation and updated context-prior tokens. The updated image representations are fed to the mask decoder. An MLP is applied on top of the updated context-prior tokens to generate posterior prototypes. The updated image representation and posterior prototypes are multiplied to obtain the final binary mask predictions. The resulting model is called Hermes. Hermes shows improvements over existing task-specific approaches across tasks and modalities. However, it is inferior to SegVol. Hence, we aim to combine the strengths of SegVol and Hermes to achieve state-of-the-art performance on both the CT and MRI modalities.
@@ -34,7 +41,16 @@ Hermes has been shown to be compatible with existing backbones, including ViT, a
 **Proposed approach to applying SegVol to Hermes:**
 We apply the approach taken by Hermes to the pre-trained SegVol model. Following the approach from the Hermes paper, we introduce context priors, a posterior prototype MLP, and add adapters to image encoder, fusion encoder and mask decoder.
 Currently, we are still experimenting with the precise architecture that would yield the best results. However, conceptually it looks as follows:
-![AdaptMedSeg](./assets/adapt_med_seg.png)
+
+<table align="center">
+  <tr align="center">
+      <td><img src="./assets/adapt_med_seg.png"></td>
+  </tr>
+  <tr align="left">
+    <td colspan=2><b>Figure 1.</b> Our proposed architecture combining SegVol's model and context-prior framework from Hermes paper</td>
+  </tr>
+</table>
+
 
 ### Datasets
 
