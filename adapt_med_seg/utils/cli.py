@@ -29,7 +29,11 @@ def parse_arguments():
     parser.add_argument('--max_len_samples',
                         type=int,
                         default=None,
-                        help='Use only a specific number of samples for training/testing. Will affect all dataloaders.')
+                        help='Use only a specific number of samples for training/validation.')
+    parser.add_argument('--max_len_test_samples',
+                        type=int,
+                        default=None,
+                        help='Use only a specific number of samples for testing.')
 
     parser.add_argument("--test_at_end", action="store_true")
     parser.add_argument("--seed", type=int, default=42)

@@ -30,16 +30,16 @@ def main():
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(
         batch_size=args.batch_size, max_len_samples=args.max_len_samples)
 
-    loggers = [TensorBoardLogger(args.log_dir)]
-    if args.use_wandb:
-        wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
-        loggers.append(wandb_logger)
+    # loggers = [TensorBoardLogger(args.log_dir)]
+    # if args.use_wandb:
+    #     wandb_logger = WandbLogger(project=args.wandb_project, save_dir=args.log_dir)
+    #     loggers.append(wandb_logger)
 
 
     trainer = Trainer(
         max_epochs=args.epochs,
         accelerator=args.device,
-        logger=loggers,
+        # logger=loggers,
         # deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
@@ -59,7 +59,7 @@ def main():
         )
         model.set_dataset(test_data)
         test_dataloader = test_data.get_test_dataloader(
-            batch_size=args.batch_size, max_len_samples=args.max_len_samples)
+            batch_size=args.batch_size, max_len_samples=args.max_len_test_samples)
         trainer.test(model, test_dataloader)
 
 

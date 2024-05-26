@@ -241,10 +241,13 @@ class MedSegDataset(Dataset):
         train_subset = self._tr_val_splits["training"]
         val_subset = self._tr_val_splits["validation"]
         if (max_len_samples is not None
-            and max_len_samples < len(train_subset)
-            and max_len_samples < len(val_subset)):
-            logging.info('Using few shot training/validation with k=%d' % max_len_samples)
+            and max_len_samples < len(train_subset)):
+            logging.info('Using few shot training with k=%d' % max_len_samples)
             train_subset = Subset(self, train_subset.indices[:max_len_samples])
+
+        if (max_len_samples is not None
+            and max_len_samples < len(val_subset)):
+            logging.info('Using few shot validation with k=%d' % max_len_samples)
             val_subset = Subset(self, val_subset.indices[:max_len_samples])
 
         train_loader = DataLoader(
