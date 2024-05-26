@@ -44,6 +44,19 @@ We chose to focus on prostate MRI data, as there are several datasets avaiable a
 Based on preliminary evaluation, we have reproduced SegVol performance on CT and MRI data, obtaining results as reporting in the SegVol paper.
 
 
+| **Training Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                         |
+|---------------------------|-------------------------------------------|--------------------------------------------------------|-------------------------------------|
+| **LoRA**                  | CT (all)                                  | Baseline performance on CT                             | TBD                                 |
+|                           | MRI (all)                                 | Baseline performance on MRI                            | TBD                                 |
+|                           | MRI Prostate                              | Performance on MRI prostate                            | TBD                                 |
+|                           | MRI Brain                                 | Performance on MRI brain                               | TBD                                 |
+| **Context Priors**        | CT (all)                                  | Expected to perform better than LoRA on CT             | TBD                                 |
+|                           | MRI (all)                                 | Expected to perform better than LoRA on MRI            | TBD                                 |
+|                           | MRI Prostate                              | Potential improvement over LoRA on MRI prostate        | TBD                                 |
+|                           | MRI Brain                                 | Potential improvement over LoRA on MRI brain           | TBD                                 |
+
+
+
 ## References
 
 
