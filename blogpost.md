@@ -22,9 +22,16 @@ To develop a truly universal medical image segmentation model, Gao et al. (2024)
 
 ## Methodology
 
+
 ### Low Rank Adaptation (LoRA)
 
+LoRA (Low-Rank Adaptation) is a technique used to adapt large pre-trained models to specific tasks without significantly increasing computational requirements [[12]](#ref12). It does this by breaking down weight matrices into low-rank components, making fine-tuning more efficient and reducing the number of trainable parameters. In this study, we use LoRA to adapt SegVol [[1]](#ref1), which was initially trained on CT volumes, to improve its performance on MRI data. By taking this approach we want to leverage the strengths of the pre-trained model while tailoring it to different medical imaging modalities. This method is essential for achieving high accuracy in multimodal medical image segmentation tasks with limited computational resources [[2]](#ref2).
+
+
 ### Mixture of Adapters (MoA)
+
+Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mixture of Experts (MoE) approach [[13]](#ref13) that utilizes multiple lightweight adapter modules within a model to handle diverse tasks and modalities. Each adapter specializes in a specific task or modality, and the model dynamically selects and combines these adapters during inference [[8]](#ref8). With regards to our study, we explore the integration of MoA into the SegVol architecture to further enhance its adaptability and performance across the two medical imaging modalities, CT and MRI. The idea is that by employing MoA, we aim to improve segmentation accuracy by utilizing specialized adapters for specific modalities, each trained on their respective modalities.[[11]](#ref11).
+
 
 ### Context-prior learning
 
@@ -32,9 +39,22 @@ Medical segmentation models focus predominantly on fine-tuning to specific modal
 
 ### Architecture overview
 
-SegVol | Hermes
-:------:|:------:
-![SegVol](./assets/SegVol.png) | ![Hermes](./assets/Hermes.png)
+<table align="center">
+  <tr align="center">
+    <th>SegVol</th>
+    <th>Hermes</th>
+  </tr>
+  <tr align="center">
+    <td><img src="./assets/SegVol.png" alt="SegVol"></td>
+    <td><img src="./assets/Hermes.png" alt="Hermes"></td>
+  </tr>
+  <tr align="left">
+    <td colspan="2"><b>Figure 1.</b> Two approaches for medical segmentation. SegVol [1] provides universal and interactive volumetric segmentation, while Hermes [11] enhances segmentation accuracy through context-prior learning.</td>
+  </tr>
+</table>
+
+
+
 
 Hermes has been shown to be compatible with existing backbones, including ViT, as used in SegVol. SegVol builds on top of Segment Anything (SAM), with image, spatial and semantic embeddings fused and fed to the mask decoder. In case of Hermes, the reference architecture is similar: an image encoder, followed by fusion of image embeddings and context prior tokens, and then followed by a mask decoder.
 
@@ -47,7 +67,7 @@ Currently, we are still experimenting with the precise architecture that would y
       <td><img src="./assets/adapt_med_seg.png"></td>
   </tr>
   <tr align="left">
-    <td colspan=2><b>Figure 1.</b> Our proposed architecture combining SegVol's model and context-prior framework from Hermes paper</td>
+    <td colspan="2"><b>Figure 2.</b> Proposed architecture combining SegVol model [1] and Hermes context-prior framework [11]. This hybrid model integrates SegVol’s volumetric segmentation with Hermes’s context-prior learning to enhance accuracy.</td>
   </tr>
 </table>
 
@@ -143,3 +163,7 @@ arXiv:2310.15161*.
 Metaxas. 2024. “Training Like a Medical Resident: Context-Prior Learning
 Toward Universal Medical Image Segmentation.”
 <https://arxiv.org/abs/2306.02416>.
+
+<a name="ref12">[12]</a>: Hu, Edward J., Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. 2022. “LoRA: Low-Rank Adaptation of Large Language Models.” *arXiv preprint arXiv:2106.09685*. <https://arxiv.org/abs/2106.09685>.
+
+<a name="ref13">[13]</a>: Shazeer, Noam, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc Le, Geoffrey Hinton, and Jeff Dean. 2017. “Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer.” In *International Conference on Learning Representations*. <https://arxiv.org/abs/1701.06538>.
