@@ -1,4 +1,5 @@
 # SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning
+
 ### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta 
 > **Supervised by**: Stefanos Achlatis, s.s.achlatis@uva.nl
 
@@ -21,6 +22,7 @@ Most recently, Du et al. (2024) proposed SegVol [[1]](#ref1), a volumetric model
 To develop a truly universal medical image segmentation model, Gao et al. (2024) proposed Hermes [[11]](#ref11), which learns task- and modality-specific priors inspired by the training program of medical radiology residents. Hermes integrates these priors through context-aware sampling [[12]](#ref12) based on the input image's modality (e.g., MRI, CT, PET) and the task description. This approach allows Hermes to adapt dynamically to different segmentation challenges, offering a significant improvement over single-task models. Contextual prompts derived from the learned priors are used to adapt the model’s segmentation strategy dynamically. Hermes has been shown to be competitive with, or even outperform, state-of-the-art task- and modality-specific approaches across a wide range of benchmarks.
 
 ## Overview of SegVol
+
 The SegVol model, proposed by [1](#ref1), is a 3D foundation segmentation model, achieving state-of-the-art performance on common medical image segmentation benchmarks. It supports universal and interactive segmentation by combining the learned output representations of a Vision Transformer (ViT) with three different types of prompting techniques, namely text, bounding box and point prompts. 
 
 The success of the SegVol model can partly be attributed to the large pre-training corpus, which consists of $96\, 000$ unlabelled Computerized Tomography (CT) volumes as well as its fine-tuning dataset, which consists of a diverse set of $6\,000$ additional CT volumes. Second, its well-designed arcchitecture allows for powerful and interactive image segmentation, providing a strong basis for practical applications. Finally, at inference time it employs a so-called zoom-in-zoom-out technique, guided by the prompts to effectively reduce the computation demand for volumetric segmentation.
@@ -28,47 +30,59 @@ The success of the SegVol model can partly be attributed to the large pre-traini
 In this section, we will briefly introduce the design and architecture of SegVol as well as a description of the M3D-Seg dataset, used for fine-tuning the model. Next, we show some preliminary experiments we conducted to verify the performance of this model in a variety of aspects. Finally, we summarise our findings and further motivate our work.
 
 ### Architecture
-The SegVol model takes inspiration from the Segment Anything Model (SAM) [1](#ref1),[2](#ref2) in its architecture. Concretely, it consists of the following main parts:
+
+The SegVol model takes inspiration from the Segment Anything Model (SAM) [1](#ref1),[2](#ref2) in its architecture. Concretely, it consists of the following main parts (also see [Figure 1, left](#fig1)):
 1. **Vision Transformer (ViT)**: responsible for computing powerful representations of the input image.
 2. **Prompt Encoder (PE)**: responsible for mapping different types of prompts to the same vector space as the output representations of the ViT. The supported prompt types are the following:
-	1. **Text prompt**: encodes semantic information about the task at hand. Given a task (e.g. liver segmentation), it uses the pre-trained text encoder of the CLIP model, evaluated using the template 
-			`A Computerized Tomography (CT) of a {} ` (e.g. liver)
-	2.  **Point prompt**: specify $n$ points within the organ to help guide the search of the model. Following CLIP [2](#ref2), the model computes the positional encoding of these points
-	3. **Bounding box prompt**: specify a 3D box around the target organ to help guide the search of the model. Again, the positional encodings of the corners of the bounding box are used.
-	Overall, the prompt encoder computes representations for each of the provided prompt types and concatenates them.
+  1. **Text prompt**: encodes semantic information about the task at hand. Given a task (e.g. liver segmentation), it uses the pre-trained text encoder of the CLIP model, evaluated using the template 
+
+  		`A Computerized Tomography (CT) of a {} ` (e.g. liver)
+  2.  **Point prompt**: specify $n$ points within the organ to help guide the search of the model. Following CLIP [2](#ref2), the model computes the positional encoding of these points
+  3. **Bounding box prompt**: specify a 3D box around the target organ to help guide the search of the model. Again, the positional encodings of the corners of the bounding box are used.
+
+    Overall, the prompt encoder computes representations for each of the provided prompt types and concatenates them.
 3. **Fusion Encoder**: a lightweight sequential application of two transformer blocks, applying bi-directional self-attention on the concatenated input of the image- and prompt embeddings computed by the earlier modules.
 4. **Mask Decoder**: Based on the output of the fusion encoder, compute mask predictions using a Multi-Layer Perceptron (MLP) block. These predictions are then used in a standard sliding window inference to find the mask with highest *Intersection over Union (IoU)* score.
 
-### Zero-shot Performance
+**Zoom-out-zoom-in mechanism**:  Given that 3D medical images typically have very high resolution[^*], and naively down-sampling them would cause significant information loss, [1](#ref) employ a so-called zoom-out-zoom-in mechanism to reduce the memory overhead at inference time. Their method is simple. Given an input image and a bbox or point prompt, they produce two inputs to the model; one, which is a downsampled version of the input (zoom-out) and another which is a full resolution, cropped image around the provided prompt (zoom-in). This way, instead of having to compute image representations for the whole input, the model can first produce a local representation of the part deemed relevant by the provided prompt, and another, which helps put this representation in the context of the whole image. As a result, the computation overhead significantly decreases[^**].
 
-> We discovered that some MRI data has leaked into the CT dataset used to train SegVol, which may have contributed to its good zero-shot performance on MRI data. The MRI data consists of 32 volumes from the AMOS dataset. Due to the limited number of MRI volumes in the CT dataset, we opted to use additional MRI datasets for training and evaluation.
+Albeit the obvious benefits of this method, it is important to note that at test time, it is our understanding that the bounding box prompts were generated from the ground truth labels, which makes the zoom-in images always *perfectly aligned* with the target organ. This may indeed leak ground-truth information to the model at inference time and obstruct the reported test results. To investigate this, we performed some preliminary experiments by applying random translations to the generated bounding box prompts, and found that the performance indeed decreases significantly <span style='color:red'>TODO: run experiment and report it (maybe in the appendix?)</span>. 
 
-- todo
+**Training**:  The SegVol model was trained in two phases; *pre-training* and *fine-tuning*. First, the ViT was pre-trained on a large training corpus, consisting of $96\, 000$ unlabelled volumetric CT images. During this phase, the SimMIM algorithm [22](#ref22) was used to obtain a weak supervision signal and guide the image encoder to map to a feature-ritch embedding space, tailored specifically for the task of image segmentation. 
+
+Next, once the pre-training of the ViT concluded, the authors employed supervised fine-tuning of the entire model on a set of $6\, 000$ labelled CT images, including $150\,000$ ground truth segmentation masks. 
+
+Overall, the above architecture is a well-defined extension of the SAM architecture, adapted specifically for the task of volumetric medical image segmentation. While SAM was shown to perform poorly in the medical domain ([4](#ref4), [5](#ref5), [6](#ref6), [7](#ref7)), SegVol consistently out-performs other state-of-the-art methods. By employing zoom-out-zoom-in inference and also through its design, it is not infeasible to perform interactive segmentation in a low-resource environment, paving the way for medical practitioners to use it in their day-to-day activities.
+
+[^*]: e.g. a typical CT volume has dimensions $(256\times 256\times200)$ which amounts to $13\,107\,200$ voxels, in 32 bit floating point representation, this takes $~250\text{MiB}$​.
+[^**]: suppose the target organ takes up $50\%$ of the whole image (an over-approximation in our experience), then the zoom-in image size is $1/2$ of the original input and the zoom-out can also be down-sampled by $50\%$. This, combined with the $O(n^2)$ asymptotic running time of the self-attention mechanism, leads to a quadratic increase in performance.
 
 ## Datasets
 
-In our work, we consider two modalities from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI). For the former, we re-use the M3D-Seg dataset, originally compiled by the SegVol authors. Additionally, we also consider six different publicly available datasets, which contain MRI images. 
+In our work, we consider two *modalities* from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI) and employ different adaptation methods to improve its performance on different modalities and tasks. For this reason, we re-used part of the M3D-Seg dataset, released by the authors of [1](#ref1) and also pre-processed an additional $1\,572$ MRI volumes and obtained $12\,486$ ground truth segmentation masks. Concretely, we used four subsets of the M3D-Seg dataset as well as six publicly available MRI segmentation datasets. Please refer to [Table 1](#tab1) for a comprehensive summary.
 
-### M3D-Seg Dataset
-- todo
+<span style='color:red'>TODO: should I discuss the individual datasets in more detail? e.g. BRATS actually has 5004 samples because it was pre-processed with 4 different techniques (form of data augmentation from our prespective)</span>
 
-### MRI Datasets
+### M3D-Seg
 
+The M3D-Seg dataset was released by the authors of [1](#ref1) and is currently one of the largest volumetric image segmentation datasets available. It consists of $5\,771$ CT images, along with $149\,000$ segmentation masks. 
 
-We chose to focus on prostate MRI data, as there are several datasets avaiable amounting to over 400 annotated volumes, and the prostate is a well-defined structure, as well as a moderate challenge in medical segmentation [[15]](#ref15). Furthermore, we also consider brain tumour MRI data, as a more challenging task, with a larger number of classes and more complex structures [[17]](#ref17) [[18]](#ref18) [[19]](#ref19).
-
-We have developed a pre-processing pipeline which takes into account the dataset modalities and outputs the volumes in a format compatible with SegVol.
-
-#### Table 1. Processed MRI datasets for SegVol fine-tuning.
-
-| **Dataset** | **Modality** | **Annotated Volumes** | **Description** |
-|-------------|--------------|-----------------------|-----------------|
-| [MSD-Prostate](http://medicaldecathlon.com) [[20]](#ref20)| MRI          | 48                    | Prostate central gland and peripheral zone |
-| [PROMISE12](https://doi.org/10.1016/j.media.2013.12.002) [[15]](#ref15)   | MRI          | 100                    | Prostate MR images with ground truth |
-| [SAML](https://liuquande.github.io/SAML/) [[21]](#ref21)        | MRI          | 116                   | Prostate MR images with ground truth |
-| T2W [[16]](#ref16)         | MRI          | 114                   | Prostate MR images with ground truth |
-| BRATS2021 [[17]](#ref17) [[18]](#ref18) [[19]](#ref19)   | MRI          | 452                   | Brain Tumour MRI images with ground truth |
-
+| Dataset                                        | Segmentations                                               | MRI         | CT   |
+| ---------------------------------------------- | ----------------------------------------------------------- | ----------- | ---- |
+| M3D-Seg 0000 (CHAOS) [24](#ref24)              | liver, (left and right) kidneys, spleen                     |             |      |
+| M3D-Seg 0001 (HaN-Seg) [26](#ref26)            | 29 different organs and tissues from the hand and neck area | 59          | 300  |
+| M3D-Seg 0008 (Pancreas-CT) [23](#ref23)        | Pancreas                                                    | 59          | 300  |
+| M3D-Seg 0020 (MSD-Liver) [25](#ref25)          | Liver, tumor                                                | 59          | 300  |
+| AMOS 2022 [27](#ref27)                         | 15 different abdominal organs                               | 59          | 300  |
+| BraTS 2021 Task 1 [28](#ref28)                 | 3 categories of brain tumor tissue                          | 1 251 (x 4) | \-   |
+| MSD\_Prostate [25](#ref25)                     | prostate core and surrounding tissue                        | 32          | \-   |
+| PROMISE-12 [29](#ref29)                        | prostate                                                    | 80          | \-   |
+| SAML dataset [30](#ref30)                      | prostate                                                    | 116         | \-   |
+| T2 Weigthted MRI Prostate Dataset [31](#ref31) | prostate                                                    | 114         | \-   |
+<table name='tab1'>
+<tr>
+<td colspan="4"><b>Table 1.</b> Datasets used in our experiments. We re-used four sub-sets of the M3D seg dataset and pre-processed an additional $6$ datasets to obtain MRI data of comparable size. The number of CT and MRI samples per dataset can be seen on the last two columns. <span style='color:red'>ugly, I know. making all of this a html table, the links don't work, doing it in markdown, we can't have 'colspan'</span> </td>
+</tr></table>
 
 ## Methodology
 
@@ -162,7 +176,6 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 ## References
 
-
 <a name="ref1">[1]</a>: Du, Yuxin, Fan Bai, Tiejun Huang, and Bo Zhao. 2024. “SegVol: Universal
 and Interactive Volumetric Medical Image Segmentation.”
 <https://arxiv.org/abs/2311.13385>.
@@ -230,3 +243,25 @@ Toward Universal Medical Image Segmentation.”
 <a id="ref20">[20]</a> Antonelli, M., Reinke, A., Bakas, S. et al. The Medical Segmentation Decathlon. Nat Commun 13, 4128 (2022). https://doi.org/10.1038/s41467-022-30695-9
 
 <a id="ref21">[21]</a> Quande Liu, Qi Dou, Pheng Ann, Heng. Shape-aware Meta-learning for Generalizing Prostate MRI Segmentation to Unseen Domains. International Conference on Medical Image Computing and Computer Assisted Intervention (MICCAI). (2020).
+
+<a name="ref22">[22]</a>: Xie, Zhenda, et al. “SimMIM: A Simple Framework for Masked Image Modeling.” 2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), IEEE, 2022. Crossref, https://doi.org/10.1109/cvpr52688.2022.00943.
+
+<a name="ref23">[23]</a>: Roth, H., Farag, A., Turkbey, E. B., Lu, L., Liu, J., & Summers, R. M. (2016). Data From Pancreas-CT (Version 2) [Data set]. The Cancer Imaging Archive. https://doi.org/10.7937/K9/TCIA.2016.tNB1kqBU
+
+<a name='ref24'>[24]</a>: A.E. Kavur, N.S. Gezer, M. Barış, S. Aslan, P.-H. Conze, et al. "CHAOS Challenge - combined (CT-MR) Healthy Abdominal Organ Segmentation", Medical Image Analysis, Volume 69, 2021. https://doi.org/10.1016/j.media.2020.101950 
+
+<a name='ref25'>[25]</a>: Antonelli, M., Reinke, A., Bakas, S. *et al.* The Medical Segmentation Decathlon. *Nat Commun* **13**, 4128 (2022). https://doi.org/10.1038/s41467-022-30695-9
+
+<a name='ref26'>[26]</a>: Podobnik G, Strojan P, Peterlin P, Ibragimov B, Vrtovec T. HaN-Seg: The head and neck organ-at-risk CT and MR segmentation dataset. *Med Phys*. 2023; 50: 1917–1927. https://doi.org/10.1002/mp.16197
+
+<a name='ref27'>[27]</a>: Ji, Yuanfeng and Bai, Haotian and Yang, Jie and Ge, Chongjian and Zhu, Ye and Zhang, Ruimao and Li, Zhen and Zhang, Lingyan and Ma, Wanling and Wan, Xiang and others. 2022. AMOS: A Large-Scale Abdominal Multi-Organ Benchmark for Versatile Medical Image Segmentation. *arXiv preprint arXiv:2206.08023* 
+
+<a name='ref28'>[28]</a>: BRATS
+
+<a name='ref29'>[29]</a>: PROMISE-12
+
+<a name='ref30'>[30]</a>: SAML
+
+<a name='ref31'>[31]</a>: T2W
+
+
