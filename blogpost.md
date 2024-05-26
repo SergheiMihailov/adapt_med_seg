@@ -44,8 +44,9 @@ We chose to focus on prostate MRI data, as there are several datasets avaiable a
 Based on preliminary evaluation, we have reproduced SegVol performance on CT and MRI data, obtaining results as reporting in the SegVol paper.
 
 
-| **Training Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                         |
+| **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results (DICE Score)**                          |
 |---------------------------|-------------------------------------------|--------------------------------------------------------|-------------------------------------|
+| **SegVol Baseline**       | MRI + CT (all)                            | Baseline performance for comparison                    | TBD                                 |
 | **LoRA**                  | CT (all)                                  | Baseline performance on CT                             | TBD                                 |
 |                           | MRI (all)                                 | Baseline performance on MRI                            | TBD                                 |
 |                           | MRI Prostate                              | Performance on MRI prostate                            | TBD                                 |
