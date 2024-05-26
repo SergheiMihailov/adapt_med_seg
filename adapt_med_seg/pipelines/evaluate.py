@@ -91,7 +91,7 @@ class EvaluatePipeline:
             data_item = data_item_to_device(data_item, self._model.device)
 
             # text prompt
-            text_prompt = task[0]
+            text_prompt = task
 
             # point prompt
             point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
@@ -111,6 +111,7 @@ class EvaluatePipeline:
             bbox_prompt = bbox_prompt.to(self._model.device)
             bbox_prompt_map = bbox_prompt_map.to(self._model.device)
 
+            self._model.model.test_mode = True
             pred = self._model.forward_test(
                 image=data_item["image"],
                 zoomed_image=data_item["zoom_out_image"],
@@ -119,6 +120,7 @@ class EvaluatePipeline:
                     None if point_prompt else [bbox_prompt, bbox_prompt_map]
                 ),
                 text_prompt=text_prompt,
+                modality=self._dataset.modality_id2name[modality[0]],
                 use_zoom=True,
             )
 
