@@ -1,11 +1,12 @@
 from adapt_med_seg.data.dataset import MedSegDataset
 from adapt_med_seg.models.lightning_model import SegVolLightning
+from adapt_med_seg.utils.cli import parse_arguments
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
-from adapt_med_seg.utils.cli import parse_arguments
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
-
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+
 import wandb
 
 api = wandb.Api()
@@ -47,6 +48,7 @@ def main():
 
     lr_monitor = LearningRateMonitor(logging_interval="step")
     checkpoint_callback = ModelCheckpoint(monitor="val_dice_score", mode="max")
+    early_stopping = EarlyStopping(monitor="val_dice_score", mode="max", patience=5)
 
     trainer = Trainer(
         max_epochs=args.epochs,
@@ -58,7 +60,7 @@ def main():
         accumulate_grad_batches=args.accumulate_grad_batches,
         # override the default if we have less than 50 samples
         log_every_n_steps=min(args.max_len_samples, 50) if args.max_len_samples else 50,
-        callbacks=[lr_monitor, checkpoint_callback],
+        callbacks=[lr_monitor, checkpoint_callback, early_stopping],
     )
     trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)
 
