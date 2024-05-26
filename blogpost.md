@@ -4,19 +4,19 @@
 
 ## Introduction
 
-Medical image segmentation (MIS) is a significant challenge in the field of computer vision due to several complexities. Firstly, the data comprises various image modalities, such as Computed Tomography (CT), Magnetic Resonance Imaging (MRI), Endoscopy, and Ultrasound (US), each employing fundamentally different techniques. Secondly, these medical images target different parts of the human anatomy, resulting in substantial variations in label space and data distribution. Thirdly, unlike conventional images, acquiring large-scale medical data is challenging due to the high costs of annotation and privacy concerns. This difficulty is exacerbated in the case of volumetric (3D) medical images, which are particularly hard to obtain, store, and annotate, and require significant computational resources for processing [[1]](#ref1). Consequently, developing a universal model that demonstrates robust and consistent performance across the entire MIS domain is exceptionally challenging.
+Medical image segmentation (MIS) is a major direction computer vision which targets accurate delineation of anatomical structures -- crucial for diagnosis, treatment planning, and disease monitoring. The development of universal models that can perform well across different medical imaging modalities, in particular, is a challenging task. Firstly, because the modalities, notably Computed Tomography (CT), Magnetic Resonance Imaging (MRI), Endoscopy, and Ultrasound (US), each employ fundamentally different techniques. Secondly, as each modality targets different parts of the human anatomy, resulting in substantial variations in label space and data distribution. Thirdly, unlike conventional images, acquiring large-scale medical data is challenging due to the high costs of annotation and privacy concerns. This difficulty is exacerbated in the case of volumetric (3D) medical images, which are particularly hard to obtain, store, and annotate, and require significant computational resources for processing [[1]](#ref1). Consequently, developing a universal model that demonstrates robust and consistent performance across the entire MIS domain is exceptionally challenging.
 
-This study focuses on SegVol [[1]](#ref1), a foundation model designed for MIS and pre-trained on CT volumes. Notably, SegVol exhibits promising zero-shot performance on MRI data. Our objective is to evaluate the transferability of SegVol's CT pre-training to MRI data through fine-tuning techniques. Our approach comprises two main strategies: First, we will quantitatively evaluate SegVol's performance under controlled input distribution shifts within the MRI modality. Second, we aim to enhance SegVol's performance in the MRI domain by employing advanced prompts, parameter-efficient fine-tuning, and modality-specific priors. Additionally, we will assess the impact of fine-tuning on SegVol's performance in the CT domain. Broadly, this work seeks to provide insights into the adaptability of MIS models across different medical imaging modalities.
+This study focuses on SegVol [[1]](#ref1), a foundation model designed for MIS and pre-trained on CT volumes. Notably, SegVol exhibits promising zero-shot performance on MRI data. Our objective is to evaluate the transferability of SegVol's CT pre-training to MRI data and extend its capabilities through fine-tuning techniques and enhanced prompt augmentation. Our approach comprises two main strategies: First, we quantitatively evaluate SegVol's performance under controlled input distribution shifts within the MRI modality. Second, we enhance SegVol's performance in the MRI domain by employing advanced prompts, parameter-efficient fine-tuning, and modality-specific priors. Additionally, we assess the impact of fine-tuning on SegVol's performance in the CT domain. Broadly, this work seeks to provide insights into the adaptability of MIS models across different medical imaging modalities.
 
 ## Background
 
-Recently, several large-scale models have been proposed to address the challenges of universality and robustness in image segmentation across both natural and medical domains. Notably, the Segment Anything Model (SAM) [[2]](#ref2) is a large pre-trained foundation model specifically designed for image segmentation, demonstrating impressive results on various tasks, including segmentation of out-of-distribution samples. However, subsequent studies have revealed that despite SAM’s exceptional performance on natural images, it underperforms on most medical image segmentation (MIS) tasks, such as organ, tumor, and lesion segmentation across CT, MRI, and Ultrasound modalities [[3]](#ref3) [[4]](#ref4) [[5]](#ref5) [[6]](#ref6) [[7]](#ref7).
+Recently, several large-scale models have been proposed to address the challenges of universality and robustness in image segmentation across both natural and medical domains. Notably, the Segment Anything Model (SAM) [[2]](#ref2) is a large pre-trained foundation model specifically designed for image segmentation, demonstrating impressive results on various tasks, including segmentation of out-of-distribution samples. However, subsequent studies have revealed that despite SAM’s exceptional performance on natural images, it significantly underperforms on most medical image segmentation (MIS) tasks, such as organ, tumor, and lesion segmentation across CT, MRI, and Ultrasound modalities [[3]](#ref3) [[4]](#ref4) [[5]](#ref5) [[6]](#ref6) [[7]](#ref7).
 
 To address these limitations, several new methods have been proposed to adapt SAM for improved performance on MIS tasks [[8]](#ref8) [[9]](#ref9) [[10]](#ref10). SAM-Med2D [[9]](#ref9) is a fine-tuned version of SAM trained on 19.7 million 2D masks from various body parts and imaging techniques. This version incorporates learnable adapter layers in each Transformer block, allowing the model to acquire domain-specific knowledge crucial for medical image segmentation. Spatial prompts such as point prompts, bounding box prompts, and mask prompts play crucial roles in guiding the model to specific regions of interest within medical images. Despite the adaptation, treating 3D images such as CT and MRI as independent 2D slices is suboptimal.
 
 Haoyu Wang et al. (2023) [[10]](#ref10) reformulated SAM into a 3D architecture, called SAM-Med3D, and trained it on 131,000 3D CT and MRI masks across 247 categories. Unlike SAM-Med2D, which treats volumetric data as individual 2D slices, SAM-Med3D processes the data in its entirety using a 3D decoder. This method allows SAM-Med3D to capture more spatial context and generate higher quality masks with significantly fewer point prompts compared to SAM-Med2D. However, SAM-Med3D still faces challenges in processing large inputs due to its volumetric design and does not support segmentation using semantic prompts.
 
-Most recently, Du et al. (2024) proposed SegVol [[1]](#ref1), a volumetric model pre-trained on 96,000 CT images from various segmentation datasets of over 200 anatomical structures. The authors claim that SegVol generalizes remarkably well to unseen data, achieving state-of-the-art zero-shot performance on most MIS tasks. SegVol employs composite-type prompts that combine semantic and spatial information, significantly enhancing its segmentation accuracy. Importantly, SegVol also supports semantic-only prompt which enables a wider range of applications. Additionally, the authors introduced a method for inference called zoom-in-zoom-out, which significantly reduces the computational cost of volumetric image segmentation while effectively utilizing the 3D structure's information. Details of this method is out of scope of this blogpost. Despite SegVol being explicitly trained on CT images, it demonstrates good zero-shot performance in the MRI domain, underscoring its versatility.
+Most recently, Du et al. (2024) proposed SegVol [[1]](#ref1), a volumetric model pre-trained on 96,000 CT images from various segmentation datasets of over 200 anatomical structures. The authors claim that SegVol generalizes remarkably well to unseen data, achieving state-of-the-art zero-shot performance on most MIS tasks. SegVol employs composite-type prompts that combine semantic and spatial information, significantly enhancing its segmentation accuracy. Importantly, SegVol also supports semantic-only prompt which enables a wider range of applications. Additionally, the authors introduced a method for inference called zoom-in-zoom-out, which significantly reduces the computational cost of volumetric image segmentation while effectively utilizing the 3D structure's information. Despite SegVol being explicitly trained on CT images, it demonstrates good zero-shot performance in the MRI domain, underscoring its versatility.
 
 To develop a truly universal medical image segmentation model, Gao et al. (2024) proposed Hermes [[11]](#ref11), which learns task- and modality-specific priors inspired by the training program of medical radiology residents. Hermes integrates these priors through context-aware sampling [[12]](#ref12) based on the input image's modality (e.g., MRI, CT, PET) and the task description. This approach allows Hermes to adapt dynamically to different segmentation challenges, offering a significant improvement over single-task models. Contextual prompts derived from the learned priors are used to adapt the model’s segmentation strategy dynamically. Hermes has been shown to be competitive with, or even outperform, state-of-the-art task- and modality-specific approaches across a wide range of benchmarks.
 
@@ -55,7 +55,8 @@ In our work, we consider two modalities from the volumetric medical image segmen
 
 ### Low Rank Adaptation (LoRA)
 
-LoRA (Low-Rank Adaptation) is a technique used to adapt large pre-trained models to specific tasks without significantly increasing computational requirements [[13]](#ref13). It does this by breaking down weight matrices into low-rank components, making fine-tuning more efficient and reducing the number of trainable parameters. In this study, we use LoRA to adapt SegVol (initially trained on CT volumes) to improve its performance on MRI data. By taking this approach we want to leverage the strengths of the pre-trained model while tailoring it to a different medical imaging modality.
+LoRA (Low-Rank Adaptation) is a technique used to adapt large pre-trained models to downstream tasks without significantly increasing computational requirements [[13]](#ref13). LoRA reduces the training time and memory footprint of training large models by decomposing the updates of the model's weights into low-rank components.
+In this study, we use LoRA to adapt SegVol (initially trained on CT volumes) to directly improve its performance on MRI data. We aim to leverage the strengths of the pre-trained model while tailoring it to a different medical imaging modality.
 
 
 ### Mixture of Adapters (MoA)
@@ -101,6 +102,24 @@ Currently, we are still experimenting with the precise architecture that would y
   </tr>
 </table>
 
+
+### Datasets
+
+> We discovered that some MRI data has leaked into the CT dataset, which may have contributed to the good zero-shot performance of SegVol on MRI data. The MRI data consists of 32 volumes from the AMOS dataset. Due to the limited number of MRI volumes in the CT dataset, we opted to use additional MRI datasets for training and evaluation.
+
+
+We chose to focus on prostate MRI data, as there are several datasets avaiable amounting to over 400 annotated volumes, and the prostate is a well-defined structure, as well as a moderate challenge in medical segmentation [[15]](#ref15).
+
+We have developed a pre-processing pipeline which takes into account the dataset modalities and outputs the volumes in a format compatible with SegVol.
+
+#### Table 1. Processed MRI datasets for SegVol fine-tuning.
+| **Dataset** | **Modality** | **Annotated Volumes** | **Description** |
+|-------------|--------------|-----------------------|-----------------|
+| [MSD-Prostate](http://medicaldecathlon.com) [[20]](#ref20)| MRI          | 48                    | Prostate central gland and peripheral zone |
+| [PROMISE12](https://doi.org/10.1016/j.media.2013.12.002) [[15]](#ref15)   | MRI          | 100                    | Prostate MR images with ground truth |
+| [SAML](https://liuquande.github.io/SAML/) [[21]](#ref21)        | MRI          | 116                   | Prostate MR images with ground truth |
+| T2W [[16]](#ref16)         | MRI          | 114                   | Prostate MR images with ground truth |
+| BRATS2021 [[17]](#ref17) [[18]](#ref18) [[19]](#ref19)   | MRI          | 452                   | Brain Tumour MRI images with ground truth |
 
 
 ## Results
@@ -196,3 +215,18 @@ Toward Universal Medical Image Segmentation.”
 <a name="ref13">[13]</a>: Hu, Edward J., Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. 2022. “LoRA: Low-Rank Adaptation of Large Language Models.” *arXiv preprint arXiv:2106.09685*. <https://arxiv.org/abs/2106.09685>.
 
 <a name="ref14">[14]</a>: Shazeer, Noam, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc Le, Geoffrey Hinton, and Jeff Dean. 2017. “Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer.” In *International Conference on Learning Representations*. <https://arxiv.org/abs/1701.06538>.
+
+<a id="ref15">[15]</a>: Geert Litjens, Bram van Ginneken, Henkjan Huisman, Wendy van de Ven, Caroline Hoeks, Dean Barratt, and Anant Madabhushi. “PROMISE12: Data from the MICCAI Grand Challenge: Prostate MR Image Segmentation 2012”. Medical Image Analysis. Zenodo, June 7, 2023. https://doi.org/10.5281/zenodo.8026660
+
+<a id="ref16">[16]</a>: Sebastian Gibala, Rafal Obuchowicz, Julia Lasek, Zofia Schneider, Adam Piorkowski, Elzbieta Pociask, & Karolina Nurzynska. (2023). Prostate MRI T2-weighted images with peripherial and trasition zone segmentations including corresponding PIRADS and PSA values [Data set]. Zenodo. https://doi.org/10.5281/zenodo.7676958
+
+
+<a id="ref17">[17]</a>: U.Baid, et al., "The RSNA-ASNR-MICCAI BraTS 2021 Benchmark on Brain Tumor Segmentation and Radiogenomic Classification", arXiv:2107.02314, 2021(opens in a new window).
+
+<a id="ref18">[18]</a> B. H. Menze, A. Jakab, S. Bauer, J. Kalpathy-Cramer, K. Farahani, J. Kirby, et al. "The Multimodal Brain Tumor Image Segmentation Benchmark (BRATS)", IEEE Transactions on Medical Imaging 34(10), 1993-2024 (2015) DOI: 10.1109/TMI.2014.2377694 (opens in a new window)
+
+<a id="ref19">[19]</a> S. Bakas, H. Akbari, A. Sotiras, M. Bilello, M. Rozycki, J.S. Kirby, et al., "Advancing The Cancer Genome Atlas glioma MRI collections with expert segmentation labels and radiomic features", Nature Scientific Data, 4:170117 (2017) DOI: 10.1038/sdata.2017.117
+
+<a id="ref20">[20]</a> Antonelli, M., Reinke, A., Bakas, S. et al. The Medical Segmentation Decathlon. Nat Commun 13, 4128 (2022). https://doi.org/10.1038/s41467-022-30695-9
+
+<a id="ref21">[21]</a> Quande Liu, Qi Dou, Pheng Ann, Heng. Shape-aware Meta-learning for Generalizing Prostate MRI Segmentation to Unseen Domains. International Conference on Medical Image Computing and Computer Assisted Intervention (MICCAI). (2020).
