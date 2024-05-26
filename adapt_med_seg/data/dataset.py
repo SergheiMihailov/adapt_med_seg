@@ -39,11 +39,24 @@ class MedSegDataset(Dataset):
         dataset_path: int,
         modalities: List[str],
         train: bool = True,
+        train_val_samples: int = None,
+        test_samples: int = None,
     ) -> None:
         self._processor = processor
         self._dataset_path = dataset_path
         self._modalities = modalities
         self._train = train
+
+        self._train_val_samples = train_val_samples
+        self._test_samples = test_samples
+
+        # make warning if misued
+        if not self.train and self._train_val_samples is not None:
+            logging.warning(
+                "train_val_samples is only used for training dataset, ignoring"
+            )
+        if self.train and self._test_samples is not None:
+            logging.warning("test_samples is only used for test dataset, ignoring")
 
         self.load_dataset()
 
@@ -238,8 +251,22 @@ class MedSegDataset(Dataset):
             for global_idx, local_idx in data_dict["labels"].items()
         ]
 
+        # -1 means all samples
+        split_sample_count = {'training': -1, 'validation': -1, 'test': -1}
+
         base = len(self._ct_paths)
         for split, m3d_split in splits:
+            # calculate how many we need.
+            # no need to worry about the case when the number of samples is lower than
+            # the number of requested samples, the inner loop will just exit on its own.
+            if self._train_val_samples is not None:
+                split_sample_count[split] = self._train_val_samples
+                logging.info("Using at most %d samples for %s, from dataset %s, out of %d samples",
+                             self._train_val_samples, split, name, len(data_dict[split]))
+            elif self._test_samples is not None:
+                logging.info("Using at most %d samples for %s, from dataset %s, out of %d samples",
+                             self._train_val_samples, split, name, len(data_dict[split]))
+                split_sample_count[split] = self._test_samples
             case_paths = data_dict.get(split, data_dict.get(m3d_split, None))
             idx = 0
             for case_ in case_paths:
@@ -262,25 +289,20 @@ class MedSegDataset(Dataset):
                     self._case_label.append(llm)
                     self._data_idxs[split].append(base + idx)
                     idx += 1
+                split_sample_count[split] -= 1 # substract, even if -1
+                if split_sample_count[split] == 0:
+                    break # break if count was requested and we reached it.
+            logging.info("Loaded %d samples for %s, from dataset %s", idx-base, split, name)
             base += idx
 
         return name, dataset_number
 
-    def get_train_val_dataloaders(
-        self, batch_size: int = 1, max_len_samples: int = None
-    ) -> tuple[DataLoader, DataLoader]:
+    def get_train_val_dataloaders(self, batch_size: int = 1) -> tuple[DataLoader, DataLoader]:
         if not self.train:
             raise ValueError("This method is only for training dataset")
 
         train_subset = self._tr_val_splits["training"]
         val_subset = self._tr_val_splits["validation"]
-        if max_len_samples is not None and max_len_samples < len(train_subset):
-            logging.info("Using few shot training with k=%d" % max_len_samples)
-            train_subset = Subset(self, train_subset.indices[:max_len_samples])
-
-        if max_len_samples is not None and max_len_samples < len(val_subset):
-            logging.info("Using few shot validation with k=%d" % max_len_samples)
-            val_subset = Subset(self, val_subset.indices[:max_len_samples])
 
         train_loader = DataLoader(
             train_subset, batch_size=batch_size, shuffle=True, pin_memory=True
@@ -292,16 +314,11 @@ class MedSegDataset(Dataset):
 
         return train_loader, val_loader
 
-    def get_test_dataloader(
-        self, batch_size: int = 1, max_len_samples: int = None
-    ) -> DataLoader:
+    def get_test_dataloader(self, batch_size: int = 1) -> DataLoader:
         if self.train:
             raise ValueError("This method is only for test dataset")
 
         test_subset = self._test_splits["test"]
-        if max_len_samples is not None and max_len_samples < len(test_subset):
-            logging.info("Using few shot testing with k=%d" % max_len_samples)
-            test_subset = Subset(self, test_subset.indices[:max_len_samples])
 
         test_dataloader = DataLoader(test_subset, batch_size=batch_size, shuffle=False)
         return test_dataloader

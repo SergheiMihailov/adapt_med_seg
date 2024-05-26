@@ -36,12 +36,12 @@ def main():
         dataset_path=args.dataset_path,
         modalities=modalities,
         train=True,
+        train_val_samples=args.max_len_samples,
+        test_samples=None,
     )
 
     model.set_dataset(_dataset)
-    train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(
-        batch_size=args.batch_size, max_len_samples=args.max_len_samples
-    )
+    train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(batch_size=args.batch_size)
 
     loggers = [TensorBoardLogger(args.log_dir)]
     if args.use_wandb:
@@ -85,11 +85,11 @@ def main():
             dataset_path=args.dataset_path,
             modalities=modalities,
             train=False,
+            train_val_samples=None,
+            test_samples=args.max_len_test_samples,
         )
         model.set_dataset(test_data)
-        test_dataloader = test_data.get_test_dataloader(
-            batch_size=args.batch_size, max_len_samples=args.max_len_test_samples
-        )
+        test_dataloader = test_data.get_test_dataloader(batch_size=args.batch_size)
         trainer.test(model, test_dataloader)
 
 

@@ -46,13 +46,13 @@ class EvaluatePipeline:
             processor=self._model.processor,
             modalities=self._modalities,
             train=False,
+            train_val_samples=None, # never train in eval loop
+            test_samples=self._max_len_samples,
         )
         self.dataset_id = self._dataset.dataset_number
 
     def run(self) -> dict[str, dict[str, Any]]:
-        test_loader = self._dataset.get_test_dataloader(
-            batch_size=self._batch_size, max_len_samples=self._max_len_samples
-        )
+        test_loader = self._dataset.get_test_dataloader(batch_size=self._batch_size)
 
         preds, labels = [], []
 
