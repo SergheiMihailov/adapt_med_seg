@@ -39,16 +39,36 @@ The SegVol model takes inspiration from the Segment Anything Model (SAM) [1](#re
 3. **Fusion Encoder**: a lightweight sequential application of two transformer blocks, applying bi-directional self-attention on the concatenated input of the image- and prompt embeddings computed by the earlier modules.
 4. **Mask Decoder**: Based on the output of the fusion encoder, compute mask predictions using a Multi-Layer Perceptron (MLP) block. These predictions are then used in a standard sliding window inference to find the mask with highest *Intersection over Union (IoU)* score.
 
-### M3D-Seg Dataset
-- todo
-
 ### Zero-shot Performance
+
+> We discovered that some MRI data has leaked into the CT dataset used to train SegVol, which may have contributed to its good zero-shot performance on MRI data. The MRI data consists of 32 volumes from the AMOS dataset. Due to the limited number of MRI volumes in the CT dataset, we opted to use additional MRI datasets for training and evaluation.
+
 - todo
 
 ## Datasets
 
-In our work, we consider two modalities from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI). For the former, we re-use the M3D-Seg dataset, described above. Additionally, we also consider six different publicly available datasets, which contain MRI images. These datasets are the following:
-1. todo
+In our work, we consider two modalities from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI). For the former, we re-use the M3D-Seg dataset, originally compiled by the SegVol authors. Additionally, we also consider six different publicly available datasets, which contain MRI images. 
+
+### M3D-Seg Dataset
+- todo
+
+### MRI Datasets
+
+
+We chose to focus on prostate MRI data, as there are several datasets avaiable amounting to over 400 annotated volumes, and the prostate is a well-defined structure, as well as a moderate challenge in medical segmentation [[15]](#ref15). Furthermore, we also consider brain tumour MRI data, as a more challenging task, with a larger number of classes and more complex structures [[17]](#ref17) [[18]](#ref18) [[19]](#ref19).
+
+We have developed a pre-processing pipeline which takes into account the dataset modalities and outputs the volumes in a format compatible with SegVol.
+
+#### Table 1. Processed MRI datasets for SegVol fine-tuning.
+
+| **Dataset** | **Modality** | **Annotated Volumes** | **Description** |
+|-------------|--------------|-----------------------|-----------------|
+| [MSD-Prostate](http://medicaldecathlon.com) [[20]](#ref20)| MRI          | 48                    | Prostate central gland and peripheral zone |
+| [PROMISE12](https://doi.org/10.1016/j.media.2013.12.002) [[15]](#ref15)   | MRI          | 100                    | Prostate MR images with ground truth |
+| [SAML](https://liuquande.github.io/SAML/) [[21]](#ref21)        | MRI          | 116                   | Prostate MR images with ground truth |
+| T2W [[16]](#ref16)         | MRI          | 114                   | Prostate MR images with ground truth |
+| BRATS2021 [[17]](#ref17) [[18]](#ref18) [[19]](#ref19)   | MRI          | 452                   | Brain Tumour MRI images with ground truth |
+
 
 ## Methodology
 
@@ -103,25 +123,6 @@ Currently, we are still experimenting with the precise architecture that would y
 </table>
 
 
-### Datasets
-
-> We discovered that some MRI data has leaked into the CT dataset, which may have contributed to the good zero-shot performance of SegVol on MRI data. The MRI data consists of 32 volumes from the AMOS dataset. Due to the limited number of MRI volumes in the CT dataset, we opted to use additional MRI datasets for training and evaluation.
-
-
-We chose to focus on prostate MRI data, as there are several datasets avaiable amounting to over 400 annotated volumes, and the prostate is a well-defined structure, as well as a moderate challenge in medical segmentation [[15]](#ref15).
-
-We have developed a pre-processing pipeline which takes into account the dataset modalities and outputs the volumes in a format compatible with SegVol.
-
-#### Table 1. Processed MRI datasets for SegVol fine-tuning.
-| **Dataset** | **Modality** | **Annotated Volumes** | **Description** |
-|-------------|--------------|-----------------------|-----------------|
-| [MSD-Prostate](http://medicaldecathlon.com) [[20]](#ref20)| MRI          | 48                    | Prostate central gland and peripheral zone |
-| [PROMISE12](https://doi.org/10.1016/j.media.2013.12.002) [[15]](#ref15)   | MRI          | 100                    | Prostate MR images with ground truth |
-| [SAML](https://liuquande.github.io/SAML/) [[21]](#ref21)        | MRI          | 116                   | Prostate MR images with ground truth |
-| T2W [[16]](#ref16)         | MRI          | 114                   | Prostate MR images with ground truth |
-| BRATS2021 [[17]](#ref17) [[18]](#ref18) [[19]](#ref19)   | MRI          | 452                   | Brain Tumour MRI images with ground truth |
-
-
 ## Results
 Based on preliminary evaluation, we have reproduced SegVol performance on CT and MRI data, obtaining results as reporting in the SegVol paper.
 
@@ -159,6 +160,20 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 
 
+
+
+## Discussion and Conclusion
+
+
+## Invidual Contributions
+
+| **Name**       | **Contribution**                                                                                   |
+|----------------|-----------------------------------------------------------------------------------------------------|
+| Z. Fülöp       |  |
+| S. Mihailov    |  |
+| M. Krastev     |  |
+| M. Hamar       |  |
+| D.A. Toapanta  |  |
 
 ## References
 
