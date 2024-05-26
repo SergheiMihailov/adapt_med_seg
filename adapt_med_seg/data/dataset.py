@@ -244,8 +244,8 @@ class MedSegDataset(Dataset):
             and max_len_samples < len(train_subset)
             and max_len_samples < len(val_subset)):
             logging.info('Using few shot training/validation with k=%d' % max_len_samples)
-            train_subset = Subset(train_subset, train_subset.indices[:max_len_samples])
-            val_subset = Subset(val_subset, val_subset.indices[:max_len_samples])
+            train_subset = Subset(self, train_subset.indices[:max_len_samples])
+            val_subset = Subset(self, val_subset.indices[:max_len_samples])
 
         train_loader = DataLoader(
             train_subset, batch_size=batch_size, shuffle=True, pin_memory=True
@@ -269,7 +269,7 @@ class MedSegDataset(Dataset):
         if (max_len_samples is not None
             and max_len_samples < len(test_subset)):
             logging.info('Using few shot testing with k=%d' % max_len_samples)
-            test_subset = Subset(test_subset, test_subset.indices[:max_len_samples])
+            test_subset = Subset(self, test_subset.indices[:max_len_samples])
 
         test_dataloader = DataLoader(test_subset, batch_size=batch_size, shuffle=False)
         return test_dataloader

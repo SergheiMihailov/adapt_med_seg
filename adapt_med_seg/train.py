@@ -44,6 +44,8 @@ def main():
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
         accumulate_grad_batches=args.accumulate_grad_batches,
+        # override the default if we have less than 50 samples
+        log_every_n_steps=min(args.max_len_samples, 50) if args.max_len_samples else 50,
     )
     trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)
 
