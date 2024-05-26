@@ -1,6 +1,7 @@
 from typing import List, Tuple, Dict, Any, NamedTuple
 from dataclasses import dataclass
 from glob import glob
+import logging
 import numpy as np
 import json
 import os
@@ -231,13 +232,20 @@ class MedSegDataset(Dataset):
 
     def get_train_val_dataloaders(
         self,
-        batch_size: int = 1
+        batch_size: int = 1,
+        max_len_samples: int = None
     ) -> tuple[DataLoader, DataLoader]:
         if not self.train:
             raise ValueError("This method is only for training dataset")
 
         train_subset = self._tr_val_splits["training"]
         val_subset = self._tr_val_splits["validation"]
+        if (max_len_samples is not None
+            and max_len_samples < len(train_subset)
+            and max_len_samples < len(val_subset)):
+            logging.info('Using few shot training/validation with k=%d' % max_len_samples)
+            train_subset = Subset(train_subset, train_subset.indices[:max_len_samples])
+            val_subset = Subset(val_subset, val_subset.indices[:max_len_samples])
 
         train_loader = DataLoader(
             train_subset, batch_size=batch_size, shuffle=True, pin_memory=True
@@ -252,14 +260,18 @@ class MedSegDataset(Dataset):
     def get_test_dataloader(
         self,
         batch_size: int = 1,
+        max_len_samples: int = None
     ) -> DataLoader:
         if self.train:
             raise ValueError("This method is only for test dataset")
-        test_dataloader = DataLoader(
-            self._test_splits["test"],
-            batch_size=batch_size,
-            shuffle=False
-        )
+
+        test_subset = self._test_splits["test"]
+        if (max_len_samples is not None
+            and max_len_samples < len(test_subset)):
+            logging.info('Using few shot testing with k=%d' % max_len_samples)
+            test_subset = Subset(test_subset, test_subset.indices[:max_len_samples])
+
+        test_dataloader = DataLoader(test_subset, batch_size=batch_size, shuffle=False)
         return test_dataloader
 
     @property

@@ -27,7 +27,8 @@ def main():
     )
 
     model.set_dataset(_dataset)
-    train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders()
+    train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(
+        batch_size=args.batch_size, max_len_samples=args.max_len_samples)
 
     loggers = [TensorBoardLogger(args.log_dir)]
     if args.use_wandb:
@@ -55,7 +56,8 @@ def main():
             train=False,
         )
         model.set_dataset(test_data)
-        test_dataloader = test_data.get_test_dataloader(batch_size=args.batch_size)
+        test_dataloader = test_data.get_test_dataloader(
+            batch_size=args.batch_size, max_len_samples=args.max_len_samples)
         trainer.test(model, test_dataloader)
 
 

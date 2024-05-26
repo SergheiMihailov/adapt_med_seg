@@ -36,6 +36,7 @@ class EvaluatePipeline:
         self._modalities = kwargs["modalities"]
         self._device = kwargs["device"]
         self._batch_size = kwargs["batch_size"]
+        self._max_len_samples = kwargs.get("max_len_samples", None)
 
         self._model = get_model(
             model_name=self.model_name,
@@ -53,7 +54,7 @@ class EvaluatePipeline:
 
     def run(self) -> dict[str, dict[str, Any]]:
         test_loader = self._dataset.get_test_dataloader(
-            batch_size=self._batch_size)
+            batch_size=self._batch_size, max_len_samples=self._max_len_samples)
 
         preds, labels = [], []
 

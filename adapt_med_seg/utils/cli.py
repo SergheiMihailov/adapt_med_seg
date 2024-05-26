@@ -26,6 +26,10 @@ def parse_arguments():
         nargs="*",
         help="List of modalities to use",
     )
+    parser.add_argument('--max_len_samples',
+                        type=int,
+                        default=None,
+                        help='Use only a specific number of samples for training/testing. Will affect all dataloaders.')
 
     parser.add_argument("--test_at_end", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
