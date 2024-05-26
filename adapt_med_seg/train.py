@@ -36,8 +36,9 @@ def main():
         dataset_path=args.dataset_path,
         modalities=modalities,
         train=True,
-        train_val_samples=args.max_len_samples,
-        test_samples=None,
+        max_train_samples=args.max_train_samples,
+        max_val_samples=args.max_val_samples,
+        max_test_samples=None,
     )
 
     model.set_dataset(_dataset)
@@ -85,8 +86,9 @@ def main():
             dataset_path=args.dataset_path,
             modalities=modalities,
             train=False,
-            train_val_samples=None,
-            test_samples=args.max_len_test_samples,
+            max_train_samples=None,
+            max_val_samples=None,
+            max_test_samples=args.max_test_samples,
         )
         model.set_dataset(test_data)
         test_dataloader = test_data.get_test_dataloader(batch_size=args.batch_size)

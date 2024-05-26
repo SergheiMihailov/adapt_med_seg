@@ -32,11 +32,15 @@ def parse_arguments():
         nargs="*",
         help="List of modalities to use",
     )
-    parser.add_argument('--max_len_samples',
+    parser.add_argument('--max_train_samples',
                         type=int,
                         default=None,
                         help='Use only a specific number of samples for training/validation.')
-    parser.add_argument('--max_len_test_samples',
+    parser.add_argument('--max_val_samples',
+                        type=int,
+                        default=None,
+                        help='Use only a specific number of samples for testing.')
+    parser.add_argument('--max_test_samples',
                         type=int,
                         default=None,
                         help='Use only a specific number of samples for testing.')

@@ -39,24 +39,30 @@ class MedSegDataset(Dataset):
         dataset_path: int,
         modalities: List[str],
         train: bool = True,
-        train_val_samples: int = None,
-        test_samples: int = None,
+        max_train_samples: int = None,
+        max_val_samples: int = None,
+        max_test_samples: int = None,
     ) -> None:
         self._processor = processor
         self._dataset_path = dataset_path
         self._modalities = modalities
         self._train = train
 
-        self._train_val_samples = train_val_samples
-        self._test_samples = test_samples
+        self._max_train_samples = max_train_samples
+        self._max_val_samples = max_val_samples
+        self._max_test_samples = max_test_samples
 
         # make warning if misued
-        if not self.train and self._train_val_samples is not None:
+        if not self.train and self._max_train_samples is not None:
             logging.warning(
-                "train_val_samples is only used for training dataset, ignoring"
+                "max_train_samples is only used for training dataset, ignoring"
             )
-        if self.train and self._test_samples is not None:
-            logging.warning("test_samples is only used for test dataset, ignoring")
+        if not self.train and self._max_val_samples is not None:
+            logging.warning(
+                "max_val_samples is only used for training dataset, ignoring"
+            )
+        if self.train and self._max_test_samples is not None:
+            logging.warning("max_test_samples is only used for test dataset, ignoring")
 
         self.load_dataset()
 
@@ -252,22 +258,19 @@ class MedSegDataset(Dataset):
         ]
 
         # -1 means all samples
-        split_sample_count = {'training': -1, 'validation': -1, 'test': -1}
+        split_sample_count = {
+            'training': -1 if self._max_train_samples is None else self._max_train_samples,
+            'validation': -1 if self._max_val_samples is None else self._max_val_samples,
+            'test': -1 if self._max_test_samples is None else self._max_test_samples,
+        }
 
         base = len(self._ct_paths)
         for split, m3d_split in splits:
             # calculate how many we need.
             # no need to worry about the case when the number of samples is lower than
             # the number of requested samples, the inner loop will just exit on its own.
-            if self._train_val_samples is not None:
-                split_sample_count[split] = self._train_val_samples
-                logging.info("Using at most %d samples for %s, from dataset %s, out of %d samples",
-                             self._train_val_samples, split, name, len(data_dict[split]))
-            elif self._test_samples is not None:
-                logging.info("Using at most %d samples for %s, from dataset %s, out of %d samples",
-                             self._train_val_samples, split, name, len(data_dict[split]))
-                split_sample_count[split] = self._test_samples
             case_paths = data_dict.get(split, data_dict.get(m3d_split, None))
+            logging.info("Loading at least %d samples for %s, from dataset %s (len: %d)", split_sample_count[split], split, name, len(case_paths))
             idx = 0
             for case_ in case_paths:
                 # default to '0': 'CT', if not specified
@@ -292,7 +295,7 @@ class MedSegDataset(Dataset):
                 split_sample_count[split] -= 1 # substract, even if -1
                 if split_sample_count[split] == 0:
                     break # break if count was requested and we reached it.
-            logging.info("Loaded %d samples for %s, from dataset %s", idx-base, split, name)
+            logging.debug("Loaded %d samples for %s, from dataset %s", idx-base, split, name)
             base += idx
 
         return name, dataset_number

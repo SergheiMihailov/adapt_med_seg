@@ -33,7 +33,10 @@ class EvaluatePipeline:
         self._modalities = kwargs["modalities"]
         self._device = kwargs["device"]
         self._batch_size = kwargs["batch_size"]
-        self._max_len_samples = kwargs.get("max_len_test_samples", None)
+
+        # self._max_train_samples = kwargs.get("max_train_samples", None)
+        # self._max_val_samples = kwargs.get("max_val_samples", None)
+        self._max_test_samples = kwargs.get("max_test_samples", None)
 
         self._model = get_model(
             model_name=self.model_name,
@@ -46,8 +49,9 @@ class EvaluatePipeline:
             processor=self._model.processor,
             modalities=self._modalities,
             train=False,
-            train_val_samples=None, # never train in eval loop
-            test_samples=self._max_len_samples,
+            max_train_samples=None, # never train in eval loop
+            max_val_samples=None, # never validate in eval loop
+            max_test_samples=self._max_test_samples,
         )
         self.dataset_id = self._dataset.dataset_number
 
