@@ -43,18 +43,38 @@ We chose to focus on prostate MRI data, as there are several datasets avaiable a
 ## Results
 Based on preliminary evaluation, we have reproduced SegVol performance on CT and MRI data, obtaining results as reporting in the SegVol paper.
 
+### Table #: External Validation Results of LoRA and Context Priors on MRI and CT Datasets
 
-| **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results (DICE Score)**                          |
+| **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                          |
 |---------------------------|-------------------------------------------|--------------------------------------------------------|-------------------------------------|
 | **SegVol Baseline**       | MRI + CT (all)                            | Baseline performance for comparison                    | TBD                                 |
-| **LoRA**                  | CT (all)                                  | Baseline performance on CT                             | TBD                                 |
+| **LoRA**                  | MRI + CT (all)                            | Baseline performance for comparison                                  | TBD                                 |
+|                           | CT (all)                                  | Baseline performance on CT                             | TBD                                 |
 |                           | MRI (all)                                 | Baseline performance on MRI                            | TBD                                 |
 |                           | MRI Prostate                              | Performance on MRI prostate                            | TBD                                 |
 |                           | MRI Brain                                 | Performance on MRI brain                               | TBD                                 |
-| **Context Priors**        | CT (all)                                  | Expected to perform better than LoRA on CT             | TBD                                 |
+| **Context Priors**        | MRI + CT (all)                                   | Baseline performance for comparison            | TBD                                 |
+|         | CT (all)                                  | Expected to perform better than LoRA on CT             | TBD                                 |
 |                           | MRI (all)                                 | Expected to perform better than LoRA on MRI            | TBD                                 |
 |                           | MRI Prostate                              | Potential improvement over LoRA on MRI prostate        | TBD                                 |
 |                           | MRI Brain                                 | Potential improvement over LoRA on MRI brain           | TBD                                 |
+
+*Note: The results are presented as mean Dice scores.*
+
+### Table #: Dice Scores for Different Organs Using SegVol Baseline, LoRA, and Context Priors
+
+| **Organ**                  | **SegVol Baseline (MRI + CT)** | **LoRA (MRI + CT)**       | **Context Priors (MRI + CT)** | **Results** |
+|----------------------------|--------------------------------|---------------------------|-------------------------------|-------------|
+| **Prostate**               | TBD                            | TBD                       | TBD                           | TBD         |
+| **Brain**                  | TBD                            | TBD                       | TBD                           | TBD         |
+
+
+*Note: The results are presented as mean Dice scores.*
+
+
+
+
+
 
 
 
