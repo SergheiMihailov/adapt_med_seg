@@ -20,6 +20,36 @@ Most recently, Du et al. (2024) proposed SegVol [[1]](#ref1), a volumetric model
 
 To develop a truly universal medical image segmentation model, Gao et al. (2024) proposed Hermes [[11]](#ref11), which learns task- and modality-specific priors inspired by the training program of medical radiology residents. Hermes integrates these priors through context-aware sampling [[12]](#ref12) based on the input image's modality (e.g., MRI, CT, PET) and the task description. This approach allows Hermes to adapt dynamically to different segmentation challenges, offering a significant improvement over single-task models. Contextual prompts derived from the learned priors are used to adapt the model’s segmentation strategy dynamically. Hermes has been shown to be competitive with, or even outperform, state-of-the-art task- and modality-specific approaches across a wide range of benchmarks.
 
+## Overview of SegVol
+The SegVol model, proposed by [1](#ref1), is a 3D foundation segmentation model, achieving state-of-the-art performance on common medical image segmentation benchmarks. It supports universal and interactive segmentation by combining the learned output representations of a Vision Transformer (ViT) with three different types of prompting techniques, namely text, bounding box and point prompts. 
+
+The success of the SegVol model can partly be attributed to the large pre-training corpus, which consists of $96\, 000$ unlabelled Computerized Tomography (CT) volumes as well as its fine-tuning dataset, which consists of a diverse set of $6\,000$ additional CT volumes. Second, its well-designed arcchitecture allows for powerful and interactive image segmentation, providing a strong basis for practical applications. Finally, at inference time it employs a so-called zoom-in-zoom-out technique, guided by the prompts to effectively reduce the computation demand for volumetric segmentation.
+
+In this section, we will briefly introduce the design and architecture of SegVol as well as a description of the M3D-Seg dataset, used for fine-tuning the model. Next, we show some preliminary experiments we conducted to verify the performance of this model in a variety of aspects. Finally, we summarise our findings and further motivate our work.
+
+### Architecture
+The SegVol model takes inspiration from the Segment Anything Model (SAM) [1](#ref1),[2](#ref2) in its architecture. Concretely, it consists of the following main parts:
+1. **Vision Transformer (ViT)**: responsible for computing powerful representations of the input image.
+2. **Prompt Encoder (PE)**: responsible for mapping different types of prompts to the same vector space as the output representations of the ViT. The supported prompt types are the following:
+	1. **Text prompt**: encodes semantic information about the task at hand. Given a task (e.g. liver segmentation), it uses the pre-trained text encoder of the CLIP model, evaluated using the template 
+			`A Computerized Tomography (CT) of a {} ` (e.g. liver)
+	2.  **Point prompt**: specify $n$ points within the organ to help guide the search of the model. Following CLIP [2](#ref2), the model computes the positional encoding of these points
+	3. **Bounding box prompt**: specify a 3D box around the target organ to help guide the search of the model. Again, the positional encodings of the corners of the bounding box are used.
+	Overall, the prompt encoder computes representations for each of the provided prompt types and concatenates them.
+3. **Fusion Encoder**: a lightweight sequential application of two transformer blocks, applying bi-directional self-attention on the concatenated input of the image- and prompt embeddings computed by the earlier modules.
+4. **Mask Decoder**: Based on the output of the fusion encoder, compute mask predictions using a Multi-Layer Perceptron (MLP) block. These predictions are then used in a standard sliding window inference to find the mask with highest *Intersection over Union (IoU)* score.
+
+### M3D-Seg Dataset
+- todo
+
+### Zero-shot Performance
+- todo
+
+## Datasets
+
+In our work, we consider two modalities from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI). For the former, we re-use the M3D-Seg dataset, described above. Additionally, we also consider six different publicly available datasets, which contain MRI images. These datasets are the following:
+1. todo
+
 ## Methodology
 
 
@@ -72,9 +102,6 @@ Currently, we are still experimenting with the precise architecture that would y
 </table>
 
 
-### Datasets
-
-We chose to focus on prostate MRI data, as there are several datasets avaiable amounting to over 400 annotated volumes, and the prostate is a well-defined structure that is easy to segment. We have developed a pre-processing pipeline, and pre-processed MSD, PROMISE12, SAML and T2W datasets in a format compatible with SegVol.
 
 ## Results
 Based on preliminary evaluation, we have reproduced SegVol performance on CT and MRI data, obtaining results as reporting in the SegVol paper.
@@ -83,7 +110,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 | **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                          |
 |---------------------------|-------------------------------------------|--------------------------------------------------------|-------------------------------------|
-| **SegVol Baseline**       | MRI + CT (all)                            | Baseline performance for comparison                    | TBD                                 |
+| **SegVol Baseline**       | MRI + CT (all)                            | Baseline performance for comparison                    | 0.729                            |
 | **LoRA**                  | MRI + CT (all)                            | Baseline performance for comparison                                  | TBD                                 |
 |                           | CT (all)                                  | Baseline performance on CT                             | TBD                                 |
 |                           | MRI (all)                                 | Baseline performance on MRI                            | TBD                                 |
