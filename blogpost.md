@@ -31,7 +31,21 @@ In this section, we will briefly introduce the design and architecture of SegVol
 
 ### Architecture
 
-The SegVol model takes inspiration from the Segment Anything Model (SAM) [1](#ref1),[2](#ref2) in its architecture. Concretely, it consists of the following main parts (also see [Figure 1, left](#fig1)):
+<table name='fig1' align="center">
+  <tr align="center">
+    <td>
+    	<img src="/Users/hamarmiklos/Desktop/Egyetem/uva/adapt_med_seg/assets/SegVol.png" alt="SegVol" style="zoom:30%;" />
+  	</td>
+  </tr>
+  <tr align="left">
+    <td>
+    	<b>Figure 1</b>: Architecture overview of the SegVol model
+  	</td>
+  </tr>
+</table>
+
+The SegVol model takes inspiration from the Segment Anything Model (SAM) [1](#ref1),[2](#ref2) in its architecture. Concretely, it consists of the following main parts (also see [Figure 1](#fig1)):
+
 1. **Vision Transformer (ViT)**: responsible for computing powerful representations of the input image.
 2. **Prompt Encoder (PE)**: responsible for mapping different types of prompts to the same vector space as the output representations of the ViT. The supported prompt types are the following:
   1. **Text prompt**: encodes semantic information about the task at hand. Given a task (e.g. liver segmentation), it uses the pre-trained text encoder of the CLIP model, evaluated using the template 
@@ -51,7 +65,9 @@ Albeit the obvious benefits of this method, it is important to note that at test
 
 **Training**:  The SegVol model was trained in two phases; *pre-training* and *fine-tuning*. First, the ViT was pre-trained on a large training corpus, consisting of $96\, 000$ unlabelled volumetric CT images. During this phase, the SimMIM algorithm [22](#ref22) was used to obtain a weak supervision signal and guide the image encoder to map to a feature-ritch embedding space, tailored specifically for the task of image segmentation. 
 
-Next, once the pre-training of the ViT concluded, the authors employed supervised fine-tuning of the entire model on a set of $6\, 000$ labelled CT images, including $150\,000$ ground truth segmentation masks. 
+Next, once the pre-training of the ViT concluded, the authors employed supervised fine-tuning of the entire model on a set of $6\, 000$ labelled CT images, including $150\,000$ ground truth segmentation masks, from the M3D-Seg dataset (see the [next section](#datasets)). 
+
+As a result, the authors report their model to be comparable with- or surpass the current state-of-the-art over $200$ different MIS tasks 
 
 Overall, the above architecture is a well-defined extension of the SAM architecture, adapted specifically for the task of volumetric medical image segmentation. While SAM was shown to perform poorly in the medical domain ([4](#ref4), [5](#ref5), [6](#ref6), [7](#ref7)), SegVol consistently out-performs other state-of-the-art methods. By employing zoom-out-zoom-in inference and also through its design, it is not infeasible to perform interactive segmentation in a low-resource environment, paving the way for medical practitioners to use it in their day-to-day activities.
 
