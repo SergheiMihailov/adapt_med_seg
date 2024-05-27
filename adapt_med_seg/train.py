@@ -64,7 +64,7 @@ def main():
         max_epochs=args.epochs,
         accelerator=args.device,
         logger=loggers,
-        deterministic=True,
+        #deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
         gradient_clip_val=0.5,
