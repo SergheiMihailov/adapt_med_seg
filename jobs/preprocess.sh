@@ -25,7 +25,7 @@ DATASET_TYPES=("AMOS") # or ("BRATS2021")
 # with the respective dataset-specific arguments
 for i in {0..3}
 do
-    echo "python preprocess.py" \
+    echo "poetry run python preprocess.py" \
         "--dataset_root $DATASET_ROOTS_ROOT/${DATASET_ROOTS[i]} "\
         "--save_root $SAVE_ROOTS_ROOT/${SAVE_ROOTS[i]} "\
         "--dataset_code ${DATASET_CODES[i]} "\

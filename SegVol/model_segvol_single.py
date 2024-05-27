@@ -1,9 +1,10 @@
-from transformers import AutoTokenizer, PreTrainedModel, PretrainedConfig
-import numpy as np
+import ast
+
 import monai.transforms as transforms
 import nibabel as nib
+import numpy as np
 from scipy import sparse
-import ast
+from transformers import AutoTokenizer, PretrainedConfig, PreTrainedModel
 
 
 class SegVolConfig(PretrainedConfig):
@@ -52,7 +53,7 @@ class SegVolModel(PreTrainedModel):
         bbox_prompt_group=None,
         point_prompt_group=None,
         use_zoom=True,
-        modality=None
+        modality=None,
     ):
         device = image.device
         assert (
@@ -84,9 +85,13 @@ class SegVolModel(PreTrainedModel):
             #     point_prompt: {point_prompt.dtype}\n\
             #     bbox_prompt_map: {bbox_prompt_map.dtype}\n\
             #     point_prompt_map: {point_prompt_map.dtype}")
-
             logits_global_single = self.model(
-                zoomed_image, text=text_prompt, boxes=bbox_prompt, points=point_prompt, modality=modality
+                zoomed_image,
+                text=text_prompt,
+                boxes=bbox_prompt,
+                points=point_prompt,
+                train_organs=text_prompt,
+                modality=modality,
             )
         logits_global_single = F.interpolate(
             logits_global_single.cpu(), size=volume_shape, mode="nearest"
@@ -150,7 +155,7 @@ class SegVolModel(PreTrainedModel):
                 text=text_prompt,
                 use_box=bbox_prompt is not None,
                 use_point=point_prompt is not None,
-                modality=modality
+                modality=modality,
             )
             logits_single_cropped = logits_single_cropped.cpu().squeeze()
         logits_global_single[
@@ -179,11 +184,14 @@ class SegVolModel(PreTrainedModel):
                 kwargs["bbox_prompt_group"],
                 kwargs["point_prompt_group"],
                 kwargs["use_zoom"],
-                kwargs["modality"]
+                kwargs["modality"],
             )
         else:
             return self.forward_train(
-                kwargs["image"], kwargs["train_organs"], kwargs["train_labels"], kwargs["modality"]
+                kwargs["image"],
+                kwargs["train_organs"],
+                kwargs["train_labels"],
+                kwargs["modality"],
             )
 
 
@@ -505,13 +513,15 @@ def select_points(
     return points, labels
 
 
+import random
+
+import numpy as np
+
 # SegVol
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-from transformers import CLIPTextModel, CLIPTextConfig
-import random
+from transformers import CLIPTextConfig, CLIPTextModel
 
 
 # %% set up model
@@ -548,9 +558,12 @@ class SegVol(nn.Module):
             int(self.feat_shape[1]),
             int(self.feat_shape[2]),
         )
+
         # test mode
         if self.test_mode:
-            return self.forward_decoder(image_embedding, img_shape, text, boxes, points, kwargs["modality"])
+            return self.forward_decoder(
+                image_embedding, img_shape, text, boxes, points, kwargs["modality"]
+            )
 
         # train mode
         ## sl
@@ -560,14 +573,20 @@ class SegVol(nn.Module):
             img_shape,
             kwargs["train_organs"],
             kwargs["train_labels"],
-            kwargs["modality"]
+            kwargs["modality"],
         )
         ## ssl
         # ssl_loss = self.unsupervised_forward(image, image_embedding, kwargs['pseudo_seg_cleaned'], img_shape)
         return sl_loss
 
     def forward_decoder(
-        self, image_embedding, img_shape, text=None, boxes=None, points=None, modality=None
+        self,
+        image_embedding,
+        img_shape,
+        text=None,
+        boxes=None,
+        points=None,
+        modality=None,
     ):
         device = image_embedding.device
         with torch.no_grad():
@@ -600,7 +619,13 @@ class SegVol(nn.Module):
         return logits
 
     def supervised_forward(
-        self, image, image_embedding, img_shape, training_organs, train_labels, modality = None
+        self,
+        image,
+        image_embedding,
+        img_shape,
+        training_organs,
+        train_labels,
+        modality=None,
     ):
         device = image_embedding.device
         iter_points, iter_bboxes, iter_organs = self.build_prompt_label(
@@ -619,7 +644,12 @@ class SegVol(nn.Module):
         for prompt in prompt_options:
             bboxes, points, organs = prompt
             logits = self.forward_decoder(
-                image_embedding, img_shape, text=organs, boxes=bboxes, points=points, modality=modality
+                image_embedding,
+                img_shape,
+                text=organs,
+                boxes=bboxes,
+                points=points,
+                modality=modality,
             )
             # cal loss
             sl_loss_dice = self.dice_loss.forward(
@@ -845,13 +875,12 @@ class BCELoss(nn.Module):
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import warnings
 from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple, Union
 
 import torch
 import torch.nn.functional as F
-import random
-
 from monai.data.utils import (
     compute_importance_map,
     dense_patch_slices,
@@ -1016,7 +1045,7 @@ def sliding_window_inference(
     text = kwargs["text"]
     use_box = kwargs["use_box"]
     use_point = kwargs["use_point"]
-    modality = kwargs["modality"] # CT or MR
+    modality = kwargs["modality"]  # CT or MR
     assert not (use_box and use_point)
     compute_dtype = inputs.dtype
     num_spatial_dims = len(inputs.shape) - 2
@@ -1142,8 +1171,9 @@ def sliding_window_inference(
                 boxes = (
                     generate_box(pseudo_label.squeeze()).unsqueeze(0).float().to(device)
                 )
+
         seg_prob_out = predictor(
-            window_data, text, boxes, points
+            window_data, text, boxes, points, modality=modality, train_organs=text
         )  # batched patch segmentation
         #############
         # convert seg_prob_out to tuple seg_prob_tuple, this does not allocate new memory.
@@ -1298,9 +1328,10 @@ def _get_scan_interval(
     return tuple(scan_interval)
 
 
+import numpy as np
+
 # build 3D SAM
 import torch
-import numpy as np
 from monai.networks.nets import ViT
 
 
@@ -1380,11 +1411,11 @@ def _build_sam(
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import List, Optional, Tuple, Type
+
 import torch
 from torch import nn
 from torch.nn import functional as F
-
-from typing import List, Tuple, Type, Optional
 
 
 class MaskDecoder(nn.Module):
@@ -1511,6 +1542,7 @@ class MaskDecoder(nn.Module):
             mask_slice = slice(1, None)
         else:
             mask_slice = slice(0, 1)
+
         masks = masks[:, mask_slice, :, :, :]
         iou_pred = iou_pred[:, mask_slice]
 
@@ -1609,11 +1641,11 @@ class MLP(nn.Module):
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import Any, Optional, Tuple, Type
+
 import numpy as np
 import torch
 from torch import nn
-
-from typing import Any, Optional, Tuple, Type
 
 
 class PromptEncoder(nn.Module):
@@ -1838,11 +1870,11 @@ class PositionEmbeddingRandom(nn.Module):
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import torch
-from torch import Tensor, nn
-
 import math
 from typing import Tuple, Type
+
+import torch
+from torch import Tensor, nn
 
 
 class TwoWayTransformer(nn.Module):
