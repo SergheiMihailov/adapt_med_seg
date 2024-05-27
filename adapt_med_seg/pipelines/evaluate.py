@@ -64,8 +64,10 @@ class EvaluatePipeline:
         self.dataset_id = self._dataset.dataset_number
 
     def _load_checkpoint(self, checkpoint_path: str) -> None:
-        checkpoint = pl.LightningModule.load_from_checkpoint(checkpoint_path, model=self._model)
-        self._model.load_state_dict(checkpoint.state_dict())
+        # from docs: 
+        # https://lightning.ai/docs/pytorch/stable/common/checkpointing_basic.html
+        self._model = self._model.load_from_checkpoint(checkpoint_path)
+        self._model.eval()  
         logger.info(f"Loaded model checkpoint from {checkpoint_path}")
 
 
