@@ -35,7 +35,7 @@ class EvaluatePipeline:
         self._device = kwargs["device"]
         self._batch_size = kwargs["batch_size"]
         self._prompt_types = kwargs["prompt_types"]
-        self._translate_bbox = kwargs["translate_bbox"] # default=None
+        self._perturb_bbox = kwargs["perturb_bbox"] # default=None
 
         # self._max_train_samples = kwargs.get("max_train_samples", None)
         # self._max_val_samples = kwargs.get("max_val_samples", None)
@@ -173,13 +173,13 @@ class EvaluatePipeline:
     def perturbed_bbox_prompt_b(self, label_single_resize, device='cpu') -> torch.Tensor:
         """
         Reimplement `SegVol.processor.bbox_prompt_b` with random translation.
-        Uses the `self._translate_bbox` attribute to apply random translation.
+        Uses the `self._perturb_bbox` attribute to apply random translation.
 
         See `SegVol.model_segvol_single.SegVolProcessor.bbox_prompt_b` for more details.
         """
         box_single = generate_box(
             label_single_resize,
-            bbox_shift=self._translate_bbox # apply perturbation if requested
+            bbox_shift=self._perturb_bbox # apply perturbation if requested
         ).unsqueeze(0).float().to(device)
         binary_cube_resize = (
             build_binary_cube(box_single, binary_cube_shape=label_single_resize.shape)
