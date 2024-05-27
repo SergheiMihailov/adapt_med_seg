@@ -33,6 +33,6 @@ source $ENVDIR
 
 python -m adapt_med_seg.eval \
     --model_name segvol_baseline \
-    --max_test_samples 10 \
+    --max_test_samples 8 \
     --use_wandb \
     $(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)
