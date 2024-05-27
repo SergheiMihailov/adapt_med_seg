@@ -34,7 +34,7 @@ In this section, we will briefly introduce the design and architecture of SegVol
 <table name='fig1' align="center">
   <tr align="center">
     <td>
-    	<img src="/Users/hamarmiklos/Desktop/Egyetem/uva/adapt_med_seg/assets/SegVol.png" alt="SegVol" style="zoom:30%;" />
+    	<img src="assets/SegVol.png" alt="SegVol" style="zoom:30%;" />
   	</td>
   </tr>
   <tr align="left">
