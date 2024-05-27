@@ -70,15 +70,13 @@ Overall, the above architecture is a well-defined extension of the SAM architect
 
 In our work, we consider two *modalities* from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI), and employ different adaptation methods to improve performance on different modalities and tasks. For this reason, we re-used part of the M3D-Seg dataset, released by Bai et. al 2024 [[33]](#ref33), and extended it using 6 public MRI segmentation datasets for training. Please refer to [Table 1](#tab1) for a comprehensive summary.
 
-<span style='color:red'>TODO: should I discuss the individual datasets in more detail? e.g. BRATS actually has 5004 samples because it was pre-processed with 4 different techniques (form of data augmentation from our prespective) Zsombor: I think the blogpost is already long enough</span>
-
 ### Computerized Tomography Data
 
 We reused the M3D-Seg dataset, used in the fine-tuning phase of the SegVol model [[1]](#ref1). It was released by [33](#ref33), and is currently one of the largest volumetric image segmentation datasets available[^3]. It consists of $5\,771$ CT images, along with $149\,000$ segmentation masks, from a total of $25$ publicly available datasets. The authors made an effort to standardize the data across a wide range of data quality, format and sample sizes. Interstingly, the preprocessing pipeline used is relatively simple compared to common practices in the medical image segmentation domain. 
 
 Concretely, given a raw volumetric image file (typically in [NIfTI format](https://en.wikipedia.org/wiki/Neuroimaging_Informatics_Technology_Initiative#:~:text=The%20Neuroimaging%20Informatics%20Technology%20Initiative,using%20Magnetic%20Resonance%20Imaging%20methods.)), they first extract the foreground of the image (all voxels of intensity $>$ mean intensity), take the resulting image's $5^\text{th}$ and $95^\text{th}$ percentile, and standardize it using the mean and std of the foreground. Next, for each dataset, they pre-process the ground truth segmentation masks by splitting the different segmentation categories along the first dimension and then concatenating them, to obtain a $K\times H\times W\times D$ tensor of segmentation masks. Finally, they store the resulting image and mask representations as numpy binaries encoded with floating point numbers with 32bit precision. The authors apply this procedure on each raw image sample from the $25$ different CT image datasets to obtain the M3D-Seg dataset [33](#33).
 
-Here we note, that we discovered that M3D-Seg mistakenly also incorporates in total 32 MRI volumes from the AMOS dataset [27](#ref27). We investigated the cause of this and found that the original AMOS dataset has ambiguous metadata files. A more thourough explanation of it can be found in the Appendix A. We estimate that 32 samples from 96,000 should not influence the model much so we consider as if it did not happen. 
+Here we note, that we discovered that M3D-Seg mistakenly also incorporates in total 32 MRI volumes from the AMOS dataset [27](#ref27). We investigated the cause of this and found that the original AMOS dataset has ambiguous metadata files. A more thourough explanation of it can be found in the Appendix. We estimate that 32 samples from 96,000 should not influence the model much so we consider as if it did not happen. 
 
 ### Magnetic Resonance Imaging Data
 
@@ -299,10 +297,11 @@ Toward Universal Medical Image Segmentation.”
 <a name='ref34'>[34]</a>: Alec Radford and Jong Wook Kim and Chris Hallacy and Aditya Ramesh and Gabriel Goh and Sandhini Agarwal and Girish Sastry and Amanda Askell and Pamela Mishkin and Jack Clark and Gretchen Krueger and Ilya Sutskever, 2021, Learning Transferable Visual Models From Natural Language Supervision, 
 
 
-### Appendix A: MRI leakage in M3D-Seg:
+### Appendix: MRI leakage in M3D-Seg
 
-TODO: Write a nice summary why the leakage happened
-
-In supplementary table 1, they say that Amos has 240 volumes, which is true, but only 200 of them are CT according to the dataset's readme. Under 2.3 External validation, they also say that Amos' validation set has 120 volumes, which is also true, but only 100 of them are CT according to the dataset's readme. In the dataset, there is a dataset.json file which contains information on the image and label names and other metadata, in which there is also a ""modality": {"0": "CT"}" attribute. However, there is also another CSV file containing other metadata about the images, including the machine that was used to shoot the image. I looked up all the machines and the 500 CTs and 100 MRIs make up but there are images shot with MRI machines in the training and the validation data as the readme file states. I checked some of these images but honestly, I can't tell for sure from the image if it is MRI or CT, but I do think there is a good chance that SegVol was mistakenly trained and evaluated on partially MRI data, whilst claiming that they are all CT scans.
-
-from Amos: [554, 558, 589, 571, 595, 584, 517, 507, 530, 557, 587, 586, 538, 583, 585, 540, 597, 591, 580, 548, 593, 570, 518, 551, 514, 599, 596, 508, 588, 522, 541, 510]
+The AMOS dataset is available at https://zenodo.org/records/7262581. The file `labeled_data_meta_0000_0599.csv` contains the imaging machines used to create the volumes. There are 500 volumes listed with a CT machine and 100 volumes with MRI machines. However, there is also a `dataset.json` which lists all 600 volumes as CT images. In real, the following are MRI volumes: `[541,542,559,563,564,565,566,568,573,576,578,597,543,544,545,546,548,549,551,552,555,558,560,561,
+           562,567,571,572,574,575,580,583,599,550,554,569,585,586,592,594,598,547,553,556,557,577,584,587,
+           589,591,593,595,570,579,581,582,588,590,596,513,505,510,511,512,514,515,516,517,501,518,519,522,
+           523,524,525,526,503,527,528,504,530,532,533,534,535,536,502,500,520,538,506,539,507,508,537,509,
+           521,531,529,540]`
+Having this inconsistency in the metadata files, the authors of the M3D-Seg dataset included in total 32 MRI volumes labelled as CT volumes in the training split, namely the following ones: `[554, 558, 589, 571, 595, 584, 517, 507, 530, 557, 587, 586, 538, 583, 585, 540, 597, 591, 580, 548, 593, 570, 518, 551, 514, 599, 596, 508, 588, 522, 541, 510]` and 7 MRI volumes in the test split, namely: `[532, 555, 592, 578, 590, 582, 594]`. Since the SegVol authors fine-tuned on M3D-Seg, the zero-shot performance on MRI modality cannot be strictly considered zero-shot. However, the effect of 32 samples in 96,000 is estimated to be minimal. Nevertheless, we notified the authors of AMOS and M3D-Seg about the mistake, to enhance the academic corectness of future works training on AMOS and M3D-Seg.
