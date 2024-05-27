@@ -84,43 +84,28 @@ In this study, we use LoRA to adapt SegVol (initially trained on CT volumes) to 
 Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mixture of Experts (MoE) approach [[14]](#ref13) that utilizes multiple lightweight adapter modules within a model to handle diverse tasks and modalities. Each adapter specializes in a specific task or modality, and the model dynamically selects and combines these adapters during inference [[8]](#ref8). With regards to our study, we explore the integration of MoA into the SegVol architecture to further enhance its adaptability and performance across two medical imaging modalities, CT and MRI.
 
 
+
 ### Context-prior learning
+Medical imaging data is characteristically heterogeneous and diverse: different organs have completely different shapes and positions, and image features vary wildly across modalities, such as between CT and MRI. Thus, MIS models are primarily designed for specific tasks and modalities. The downside of such an approach is that models are confined to specific tasks for which they have been trained. They do not exploit similarities across tasks and modalities, which seems wasteful given the scarcity of available medical datasets. However, training across a variety of tasks and modalities requires approaches that are designed to be able universal. 
 
-Medical segmentation models focus predominantly on fine-tuning to specific modalities. However, this detracts from their generalizability and prevents learning of features useful across modalities. SegVol is a state-of-the-art model for medical image segmentation on the CT modality. Whereas it shows promising zero-shot results on the MRI modality, it underperforms compared to specialized MRI segmentation models. We aim to bring the performance of SegVol to state-of-the-art on the MRI modality, while preserving its performance on the CT modality. To that end we explore learning context-prior tokens for each task and modality (as proposed for medical image segmentation by [Gao et al. 2024](https://arxiv.org/pdf/2306.02416)). The idea is to let the segmentation model learn modality- and task-specific tokens that condition image encoding and mask decoding. These tokens are then fused via a transformer with the image representations from the image encoder, resulting in an updated image representation and updated context-prior tokens. The updated image representations are fed to the mask decoder. An MLP is applied on top of the updated context-prior tokens to generate posterior prototypes. The updated image representation and posterior prototypes are multiplied to obtain the final binary mask predictions. The resulting model is called Hermes. Hermes shows improvements over existing task-specific approaches across tasks and modalities. However, it is inferior to SegVol. Hence, we aim to combine the strengths of SegVol and Hermes to achieve state-of-the-art performance on both the CT and MRI modalities.
+[11](#ref11) explore the universal medical image segmentation paradigm. They propose integrating learnable per-modality and per-task tokens, called **context priors**, into existing MIS architectures. Context priors are used to adapt the image representation to the specified task and modality, essentially conditioning the segmentation. This is done by passing both the context prior tokens and the output of the image encoder through a transformer block, called **prior fusion**. The mask decoder will then use the adapted image representation, instead of the original one.
 
-### Architecture overview
+Furthermore, the context priors, after being passed through the prior fusion block and interacting with the image representation, are called **posterior tokens**. Posterior tokens combine the information from context prior tokens and image representation via the prior fusion mechanism, and are used to generate **posterior prototypes**. The final segmentation output of the model is the inner product of the mask decoder output with the posterior prototypes, where posterior prototypes serve as class classifiers.
 
-<table align="center">
-  <tr align="center">
-    <th>SegVol</th>
-    <th>Hermes</th>
-  </tr>
-  <tr align="center">
-    <td><img src="./assets/SegVol.png" alt="SegVol"></td>
-    <td><img src="./assets/Hermes.png" alt="Hermes"></td>
-  </tr>
-  <tr align="left">
-    <td colspan="2"><b>Figure 1.</b> Two approaches for medical segmentation. SegVol [1] provides universal and interactive volumetric segmentation, while Hermes [11] enhances segmentation accuracy through context-prior learning.</td>
-  </tr>
-</table>
-
-
-
-
-Hermes has been shown to be compatible with existing backbones, including ViT, as used in SegVol. SegVol builds on top of Segment Anything (SAM), with image, spatial and semantic embeddings fused and fed to the mask decoder. In case of Hermes, the reference architecture is similar: an image encoder, followed by fusion of image embeddings and context prior tokens, and then followed by a mask decoder.
-
-**Proposed approach to applying SegVol to Hermes:**
-We apply the approach taken by Hermes to the pre-trained SegVol model. Following the approach from the Hermes paper, we introduce context priors, a posterior prototype MLP, and add adapters to image encoder, fusion encoder and mask decoder.
-Currently, we are still experimenting with the precise architecture that would yield the best results. However, conceptually it looks as follows:
-
-<table align="center">
+<table align="center" name="fig3">
   <tr align="center">
       <td><img src="./assets/adapt_med_seg.png"></td>
   </tr>
   <tr align="left">
-    <td colspan="2"><b>Figure 2.</b> Proposed architecture combining SegVol model [1] and Hermes context-prior framework [11]. This hybrid model integrates SegVol’s volumetric segmentation with Hermes’s context-prior learning to enhance accuracy.</td>
+    <td colspan="2"><b>Figure 3.</b> Proposed architecture combining SegVol model and Hermes context-prior framework. This hybrid model integrates SegVol’s volumetric segmentation with Hermes’s context-prior learning.</td>
   </tr>
 </table>
+
+We apply the approach taken by Hermes to the pre-trained SegVol model, with slight modifications, as described below. You can refer to the figure above for an overview.
+- **Context prior pool.** Following the approach from the Hermes paper, we introduce a context prior pool. Whenever the model encounters a new modality or task (which are known in advance per dataset), a new context prior is added to the pool. **Prior fusion.** To adapt the image encoder output and obtain the posterior tokens, we introduce the prior fusion attention module. 
+- **Posterior prototype.** We use the posterior tokens obtained from prior fusion to adapt the mask decoder output. As opposed to Hermes, we use the posterior tokens as an additive adaptation to the mask decoder output tokens, rather than as a multiplicative adaptation over the feature map resulting from the mask decoder. We take this approach as we focus on single-class tasks, thus posterior prototypes as presented in the original paper would not be meaningful to our case. Ablation studies show that adding posterior information to the mask decoder output tokens is effective (TODO). 
+- **Fine-tuning the SegVol image encoder and mask decoder.** In Hermes, the task and modality priors are learned together with the backbone. Since SegVol is pre-trained, we fine-tune its image encoder and mask decoder using LoRA for better integration with the Hermes architecture. 
+- **Modality prediction loss.** Unlike in Hermes, we do not implement the auxiliary modality prediction loss, since it was shown, in the original paper, to only yield a minor improvement.
 
 
 ## Results
