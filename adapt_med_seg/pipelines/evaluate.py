@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
 import logging
+import torch
 from typing import Any
 
 from tqdm import tqdm
 import wandb
 
 from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
-from SegVol.model_segvol_single import SegVolConfig
+from SegVol.model_segvol_single import SegVolConfig, generate_box, build_binary_cube
 from adapt_med_seg.metrics import dice_score
 from adapt_med_seg.utils.initializers import get_model
 from adapt_med_seg.utils.average_meter import AverageMeter
@@ -33,6 +34,8 @@ class EvaluatePipeline:
         self._modalities = kwargs["modalities"]
         self._device = kwargs["device"]
         self._batch_size = kwargs["batch_size"]
+        self._prompt_types = kwargs["prompt_types"]
+        self._translate_bbox = kwargs["translate_bbox"] # default=None
 
         # self._max_train_samples = kwargs.get("max_train_samples", None)
         # self._max_val_samples = kwargs.get("max_val_samples", None)
@@ -95,34 +98,39 @@ class EvaluatePipeline:
             data_item = data_item_to_device(data_item, self._model.device)
 
             # text prompt
-            text_prompt = task
+            text_prompt = task if "text" in self._prompt_types else None
 
             # point prompt
             point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
                 data_item["zoom_out_label"][0][0]
-            )
+            ) if "point" in self._prompt_types else (None, None)
 
             # bbox prompt
-            bbox_prompt, bbox_prompt_map = self._model.processor.bbox_prompt_b(
+            bbox_prompt, bbox_prompt_map = self.perturbed_bbox_prompt_b(
                 data_item["zoom_out_label"][0][0]
-            )
+            ) if "bbox" in self._prompt_types else (None, None)
 
-            point_prompt = (
-                point_prompt[0].to(self._model.device),
-                point_prompt[1].to(self._model.device),
-            )
-            point_prompt_map = point_prompt_map.to(self._model.device)
-            bbox_prompt = bbox_prompt.to(self._model.device)
-            bbox_prompt_map = bbox_prompt_map.to(self._model.device)
+            point_prompt_group = None
+            if point_prompt is not None and point_prompt_map is not None:
+                point_prompt = (
+                    point_prompt[0].to(self._model.device),
+                    point_prompt[1].to(self._model.device),
+                )
+                point_prompt_map = point_prompt_map.to(self._model.device)
+                point_prompt_group = (point_prompt, point_prompt_map)
+
+            bbox_prompt_group = None
+            if bbox_prompt is not None and bbox_prompt_map is not None:
+                bbox_prompt = bbox_prompt.to(self._model.device)
+                bbox_prompt_map = bbox_prompt_map.to(self._model.device)
+                bbox_prompt_group = (bbox_prompt, bbox_prompt_map)
 
             self._model.model.test_mode = True
             pred = self._model.forward_test(
                 image=data_item["image"],
                 zoomed_image=data_item["zoom_out_image"],
-                point_prompt_group=[point_prompt, point_prompt_map],
-                bbox_prompt_group=(
-                    None if point_prompt else [bbox_prompt, bbox_prompt_map]
-                ),
+                point_prompt_group=point_prompt_group,
+                bbox_prompt_group=bbox_prompt_group,
                 text_prompt=text_prompt,
                 modality=self._dataset.modality_id2name[modality[0]],
                 use_zoom=True,
@@ -161,3 +169,21 @@ class EvaluatePipeline:
             wandb.finish()
 
         return results
+
+    def perturbed_bbox_prompt_b(self, label_single_resize, device='cpu') -> torch.Tensor:
+        """
+        Reimplement `SegVol.processor.bbox_prompt_b` with random translation.
+        Uses the `self._translate_bbox` attribute to apply random translation.
+
+        See `SegVol.model_segvol_single.SegVolProcessor.bbox_prompt_b` for more details.
+        """
+        box_single = generate_box(
+            label_single_resize,
+            bbox_shift=self._translate_bbox # apply perturbation if requested
+        ).unsqueeze(0).float().to(device)
+        binary_cube_resize = (
+            build_binary_cube(box_single, binary_cube_shape=label_single_resize.shape)
+            .unsqueeze(0)
+            .unsqueeze(0)
+        ).to(device)
+        return box_single, binary_cube_resize
