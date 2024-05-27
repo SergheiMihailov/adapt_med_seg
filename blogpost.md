@@ -40,9 +40,10 @@ The SegVol model takes inspiration from the Segment Anything Model (SAM) [1](#re
   2.  **Point prompt**: specify $n$ points within the organ to help guide the search of the model. Following CLIP [2](#ref2), the model computes the positional encoding of these points
   3. **Bounding box prompt**: specify a 3D box around the target organ to help guide the search of the model. Again, the positional encodings of the corners of the bounding box are used.
 
-    Overall, the prompt encoder computes representations for each of the provided prompt types and concatenates them.
-3. **Fusion Encoder**: a lightweight sequential application of two transformer blocks, applying bi-directional self-attention on the concatenated input of the image- and prompt embeddings computed by the earlier modules.
-4. **Mask Decoder**: Based on the output of the fusion encoder, compute mask predictions using a Multi-Layer Perceptron (MLP) block. These predictions are then used in a standard sliding window inference to find the mask with highest *Intersection over Union (IoU)* score.
+	Overall, the prompt encoder computes representations for each of the provided prompt types and concatenates them.
+
+4. **Fusion Encoder**: a lightweight sequential application of two transformer blocks, applying bi-directional self-attention on the concatenated input of the image- and prompt embeddings computed by the earlier modules.
+5. **Mask Decoder**: Based on the output of the fusion encoder, compute mask predictions using a Multi-Layer Perceptron (MLP) block. These predictions are then used in a standard sliding window inference to find the mask with highest *Intersection over Union (IoU)* score.
 
 **Zoom-out-zoom-in mechanism**:  Given that 3D medical images typically have very high resolution[^*], and naively down-sampling them would cause significant information loss, [1](#ref) employ a so-called zoom-out-zoom-in mechanism to reduce the memory overhead at inference time. Their method is simple. Given an input image and a bbox or point prompt, they produce two inputs to the model; one, which is a downsampled version of the input (zoom-out) and another which is a full resolution, cropped image around the provided prompt (zoom-in). This way, instead of having to compute image representations for the whole input, the model can first produce a local representation of the part deemed relevant by the provided prompt, and another, which helps put this representation in the context of the whole image. As a result, the computation overhead significantly decreases[^**].
 
@@ -59,33 +60,44 @@ Overall, the above architecture is a well-defined extension of the SAM architect
 
 ## Datasets
 
-In our work, we consider two *modalities* from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI) and employ different adaptation methods to improve its performance on different modalities and tasks. For this reason, we re-used part of the M3D-Seg dataset, released by the authors of [1](#ref1) and also pre-processed an additional $1\,572$ MRI volumes and obtained $12\,486$ ground truth segmentation masks. Concretely, we used four subsets of the M3D-Seg dataset as well as six publicly available MRI segmentation datasets. Please refer to [Table 1](#tab1) for a comprehensive summary.
+In our work, we consider two *modalities* from the volumetric medical image segmentation domain: Computerized Tomography (CT) and Magnetic Resonance Imaging (MRI) and employ different adaptation methods to improve its performance on different modalities and tasks. For this reason, we re-used part of the M3D-Seg dataset, released by [33](#ref33), and extended it using 6 public MRI segmentation datasets for training. Concretely, we used four subsets of the M3D-Seg dataset, as well as six publicly available MRI segmentation datasets. Please refer to [Table 1](#tab1) for a comprehensive summary.
 
 <span style='color:red'>TODO: should I discuss the individual datasets in more detail? e.g. BRATS actually has 5004 samples because it was pre-processed with 4 different techniques (form of data augmentation from our prespective)</span>
 
-### M3D-Seg
+### Computerized Tomography Data
 
-The M3D-Seg dataset was released by the authors of [1](#ref1) and is currently one of the largest volumetric image segmentation datasets available. It consists of $5\,771$ CT images, along with $149\,000$ segmentation masks. 
+We reused the M3D-Seg dataset, used in the fine-tuning phase of the SegVol model [1](#ref1). It was released by [33](#ref33), and is currently one of the largest volumetric image segmentation datasets available. It consists of $5\,771$ CT images, along with $149\,000$ segmentation masks, from a total of $25$ publicly available datasets. The authors made an effort to standardize the data across a wide range of data quality, format and sample sizes. Interstingly, the preprocessing pipeline used is relatively simple compared to common practices in the medical image segmentation domain. 
 
-| Dataset                                        | Segmentations                                               | MRI         | CT   |
-| ---------------------------------------------- | ----------------------------------------------------------- | ----------- | ---- |
-| M3D-Seg 0000 (CHAOS) [24](#ref24)              | liver, (left and right) kidneys, spleen                     |             |      |
-| M3D-Seg 0001 (HaN-Seg) [26](#ref26)            | 29 different organs and tissues from the hand and neck area | 59          | 300  |
-| M3D-Seg 0008 (Pancreas-CT) [23](#ref23)        | Pancreas                                                    | 59          | 300  |
-| M3D-Seg 0020 (MSD-Liver) [25](#ref25)          | Liver, tumor                                                | 59          | 300  |
-| AMOS 2022 [27](#ref27)                         | 15 different abdominal organs                               | 59          | 300  |
-| BraTS 2021 Task 1 [28](#ref28)                 | 3 categories of brain tumor tissue                          | 1 251 (x 4) | \-   |
-| MSD\_Prostate [25](#ref25)                     | prostate core and surrounding tissue                        | 32          | \-   |
-| PROMISE-12 [29](#ref29)                        | prostate                                                    | 80          | \-   |
-| SAML dataset [30](#ref30)                      | prostate                                                    | 116         | \-   |
-| T2 Weigthted MRI Prostate Dataset [31](#ref31) | prostate                                                    | 114         | \-   |
+Concretely, given a raw volumetric image file (typically in [NIfTI format](https://en.wikipedia.org/wiki/Neuroimaging_Informatics_Technology_Initiative#:~:text=The%20Neuroimaging%20Informatics%20Technology%20Initiative,using%20Magnetic%20Resonance%20Imaging%20methods.)), they first extract the foreground of the image (all voxels of intensity $>$ mean intensity), take the resulting image's $5^\text{th}$ and $95^\text{th}$ percentile, and standardize it using the mean and std of the foreground. Next, for each dataset, they pre-process the ground truth segmentation masks by splitting the different segmentation categories along the first dimension and then concatenating them, to obtain a $K\times H\times W\times D$ tensor of segmentation masks. Finally, they store the resulting image and mask representations as numpy binaries encoded with floating point numbers with 32bit precision. The authors apply this procedure on each raw image sample from the $25$ different CT image datasets to obtain the M3D-Seg dataset [33](#33).
+
+### Magnetic Resonance Imaging Data
+
+To successfully train our models to recognise MRI data, we selected $6$ different publicly available datasets, which consist of $1\,572$ MRI volumes and $12\,486$ ground truth segmentation masks. Please refer to [Table 1](#tab1) for an overview of the datasets we have used. We pre-process each of these samples in the same way as M3D-Seg but also include a per-sample modality information. For example, the CHAOS [24](#ref24) dataset contains both CT and MRI data, so it is important to be able to distinguish between them in our dataset representation. 
+
+### Data loading
+
+To combine the two sources of data; the M3D-Seg dataset [33](#ref33) and our collection of MRI datasets, we use the same pre-processing logic and obtain a combined dataset, which we can use for training and evaluation of our models. In practice, noting that the available CT data is an order of magnitude larger than the MRI data we have obtained, we only select a specific subset of the M3D-Seg dataset. This way we get a balanced training and validation set over the two modalities.
+
+| Dataset                                                     | Segmentations                                               | MRI        | CT   |
+| ----------------------------------------------------------- | ----------------------------------------------------------- | ---------- | ---- |
+| CHAOS [24](#ref24)                                          | liver, (left and right) kidneys, spleen                     | 30 (x2)    | 20   |
+| M3D-Seg 0001 (HaN-Seg) [33](#ref33), [26](#ref26)           | 29 different organs and tissues from the head and neck area | 59         | 300  |
+| M3D-Seg 0008 (Pancreas-CT) [33](#ref33), [23](#ref23)       | Pancreas                                                    | 59         | 300  |
+| M3D-Seg 0020 (MSD-Liver) [33](#ref33), [25](#ref25)         | Liver, tumor                                                | 59         | 300  |
+| AMOS 2022 [27](#ref27)                                      | 15 different abdominal organs                               | 59         | 300  |
+| BraTS 2021 Task 1 [28](#ref28)                              | 3 categories of brain tumor tissue                          | 1 251 (x4) | \-   |
+| MSD\_Prostate [25](#ref25)                                  | prostate core and surrounding tissue                        | 32         | \-   |
+| PROMISE-12 [29](#ref29)                                     | prostate                                                    | 80         | \-   |
+| SAML dataset [30](#ref30)                                   | prostate                                                    | 116        | \-   |
+| T2 Weigthted MRI Prostate Dataset [31](#ref31) [32](#ref32) | prostate                                                    | 114        | \-   |
 <table name='tab1'>
 <tr>
-<td colspan="4"><b>Table 1.</b> Datasets used in our experiments. We re-used four sub-sets of the M3D seg dataset and pre-processed an additional $6$ datasets to obtain MRI data of comparable size. The number of CT and MRI samples per dataset can be seen on the last two columns. <span style='color:red'>ugly, I know. making all of this a html table, the links don't work, doing it in markdown, we can't have 'colspan'</span> </td>
+<td colspan="4"><b>Table 1.</b> Datasets used in our experiments. We re-used four sub-sets of the M3D seg dataset and pre-processed an additional $6$ datasets to obtain MRI data of comparable size. The number of CT and MRI samples per dataset can be seen on the last two columns. Numbers with a  <span style='color:red'>ugly, I know. making all of this a html table, the links don't work, doing it in markdown, we can't have 'colspan'</span> </td>
 </tr></table>
 
-## Methodology
+[^3]: https://huggingface.co/datasets/GoodBaiBai88/M3D-Seg
 
+## Methodology
 
 ### Low Rank Adaptation (LoRA)
 
@@ -95,7 +107,7 @@ In this study, we use LoRA to adapt SegVol (initially trained on CT volumes) to 
 
 ### Mixture of Adapters (MoA)
 
-Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mixture of Experts (MoE) approach [[14]](#ref13) that utilizes multiple lightweight adapter modules within a model to handle diverse tasks and modalities. Each adapter specializes in a specific task or modality, and the model dynamically selects and combines these adapters during inference [[8]](#ref8). With regards to our study, we explore the integration of MoA into the SegVol architecture to further enhance its adaptability and performance across two medical imaging modalities, CT and MRI.
+Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mixture of Experts (MoE) approach [[14]](#ref13) that utilizes multiple lightweight adapter modules within a model to handle diverse tasks and modalities. Each adapter specializes in a specific task or modality, and the model dynamically selects and combines these adapters during inference <span style="color:red"> [[8]](#ref8) why put this reference?</span>. A special case of this approach uses `top-1`  gating, effectively
 
 
 
@@ -256,12 +268,15 @@ Toward Universal Medical Image Segmentation.”
 
 <a name='ref27'>[27]</a>: Ji, Yuanfeng and Bai, Haotian and Yang, Jie and Ge, Chongjian and Zhu, Ye and Zhang, Ruimao and Li, Zhen and Zhang, Lingyan and Ma, Wanling and Wan, Xiang and others. 2022. AMOS: A Large-Scale Abdominal Multi-Organ Benchmark for Versatile Medical Image Segmentation. *arXiv preprint arXiv:2206.08023* 
 
-<a name='ref28'>[28]</a>: BRATS
+<a name='ref28'>[28]</a>:  U.Baid, et al., The RSNA-ASNR-MICCAI BraTS 2021 Benchmark on Brain Tumor Segmentation and Radiogenomic Classification, arXiv:2107.02314, 2021.
 
-<a name='ref29'>[29]</a>: PROMISE-12
+<a name='ref29'>[29]</a>: Geert Litjens, Bram van Ginneken, Henkjan Huisman, Wendy van de Ven, Caroline Hoeks, Dean Barratt, & Anant Madabhushi. (2023). PROMISE12: Data from the MICCAI Grand Challenge: Prostate MR Image Segmentation 2012 [Data set]. In Medical Image Analysis Zenodo. https://doi.org/10.1016/j.media.2013.12.002.
 
-<a name='ref30'>[30]</a>: SAML
+<a name='ref30'>[30]</a>: Liu, Quande and Dou, Qi and Heng, Pheng-Ann. 2020. Shape-aware Meta-learning for Generalizing Prostate MRI Segmentation to Unseen Domains. *International Conference on Medical Image Computing and Computer Assisted Intervention*
 
-<a name='ref31'>[31]</a>: T2W
+<a name='ref31'>[31]</a>: Gibala, S.; Obuchowicz, R.; Lasek, J.; Schneider, Z.; Piorkowski, A.; Pociask, E.; Nurzynska, K. Textural Features of MR Images Correlate with an Increased Risk of Clinically Significant Cancer in Patients with High PSA Levels. *J. Clin. Med.* **2023**, *12*, 2836. https://doi.org/10.3390/jcm12082836
 
+<a name='ref32'>[32]</a>:Gibała, S.; Obuchowicz, R.; Lasek, J.; Piórkowski, A.; Nurzynska, K. Textural Analysis Supports Prostate MR Diagnosis in PIRADS Protocol. *Appl. Sci.* **2023**, *13*, 9871. https://doi.org/10.3390/app13179871
+
+<a name='ref33'>[33]</a> Fan Bai and Yuxin Du and Tiejun Huang and Max Q. -H. Meng and Bo Zhao. 2024. M3D: Advancing 3D Medical Image Analysis with Multi-Modal Large Language Models. *arXiv preprint* [ arXiv:2404.00578](https://arxiv.org/abs/2404.00578)
 
