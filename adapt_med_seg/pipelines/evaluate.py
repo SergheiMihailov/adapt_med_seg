@@ -73,6 +73,8 @@ class EvaluatePipeline:
         per_task_scores = {
             task: AverageMeter() for task in self._dataset.labels.values()
         }
+        modality_counts = {modality_name: 0 for modality_name in per_modality_scores.keys()}
+
         logger.info("Evaluating %s on dataset %s", self.model_name, self.dataset_id)
 
         if self._use_wandb:
@@ -100,17 +102,30 @@ class EvaluatePipeline:
             data_item = data_item_to_device(data_item, self._model.device)
 
             # text prompt
-            text_prompt = task if "text" in self._prompt_types else None
+            text_prompt = None
+            if "text" in self._prompt_types:
+                text_prompt = task[0]
+                logger.debug("Using text prompt %s" % text_prompt)
 
             # point prompt
-            point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
-                data_item["zoom_out_label"][0][0]
-            ) if "point" in self._prompt_types else (None, None)
+            point_prompt, point_prompt_map = None, None
+            if "point" in self._prompt_types:
+                point_prompt, point_prompt_map = self._model.processor.point_prompt_b(
+                    data_item["zoom_out_label"][0][0]
+                )
+                logger.debug("Using point prompt with shapes %s, %s (prompt) and %s (map)" %
+                             (str(point_prompt[0].shape),
+                              str(point_prompt[1].shape),
+                              str(point_prompt_map.shape)))
 
             # bbox prompt
-            bbox_prompt, bbox_prompt_map = self.perturbed_bbox_prompt_b(
-                data_item["zoom_out_label"][0][0]
-            ) if "bbox" in self._prompt_types else (None, None)
+            bbox_prompt, bbox_prompt_map = None, None
+            if "bbox" in self._prompt_types:
+                bbox_prompt, bbox_prompt_map = self.perturbed_bbox_prompt_b(
+                    data_item["zoom_out_label"][0][0]
+                )
+                logger.debug("Using bbox prompt with shapes %s (prompt) and %s (map)" %
+                             (str(bbox_prompt.shape), str(bbox_prompt_map.shape)))
 
             point_prompt_group = None
             if point_prompt is not None and point_prompt_map is not None:
@@ -149,6 +164,8 @@ class EvaluatePipeline:
                 score
             )
             per_task_scores[task[0]].update(score)
+            modality_counts[self._dataset.modality_id2name[modality[0]]] += 1
+
 
         results = {
             "dice": float(avg_dice_score.avg),
@@ -159,6 +176,7 @@ class EvaluatePipeline:
             "per_task_dice": {
                 task: float(score.avg) for task, score in per_task_scores.items()
             },
+            "modality_counts": modality_counts,
         }
 
         if self._use_wandb:
@@ -166,6 +184,8 @@ class EvaluatePipeline:
                 {
                     "dice_score": results["dice"],
                     "per_modality_dice": results["per_modality_dice"],
+                    "per_task_dice": results["per_task_dice"],
+                    "modality_counts": results["modality_counts"],
                 }
             )
             wandb.finish()
@@ -187,5 +207,5 @@ class EvaluatePipeline:
             build_binary_cube(box_single, binary_cube_shape=label_single_resize.shape)
             .unsqueeze(0)
             .unsqueeze(0)
-        ).to(device)
+        )
         return box_single, binary_cube_resize

@@ -44,11 +44,11 @@ def parse_arguments():
                         type=int,
                         default=None,
                         help='Use only a specific number of samples for testing.')
-    parser.add_argument("--prompt_types", type=str, default=["point", "bbox", "text"], nargs="*",
+    parser.add_argument("--prompt_types", type=str, default=["point", "text"], nargs="*",
                         choices=["point", "bbox", "text"],
                         help="List of prompt types to use in evaluation. Only works with `eval.py`,"+\
                                 "not with `train.py`. Default is all prompt types.")
-    parser.add_argument("--perturb_bbox", type=float, default=None, nargs=1,
+    parser.add_argument("--perturb_bbox", type=float, default=None,
                         help="Apply random perturbation to the bounding box prompt by"+\
                                 "randomly shifting the corners of it." +\
                                 "Argument is the maximum voxel shift in each direction.")
