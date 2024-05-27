@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:59:00
 #SBATCH --mem=120G
-#SBATCH --array=1-10%5
+#SBATCH --array=1-11%5
 #SBATCH --output=/home/scur0402/jobs/logs/SegVol_CT_%A_%a.out
 
 date
@@ -34,4 +34,5 @@ source $ENVDIR
 python -m adapt_med_seg.eval \
     --model_name segvol_baseline \
     --max_test_samples 10 \
+    --use_wandb \
     $(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)

@@ -86,6 +86,8 @@ class EvaluatePipeline:
                     "dataset": self.dataset_id,
                     "model": self.model_name,
                     "batch_size": self._batch_size,
+                    "prompt_types": self._prompt_types,
+                    "perturb_bbox": self._perturb_bbox,
                 }
             )
 

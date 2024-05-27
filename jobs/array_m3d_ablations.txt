@@ -6,5 +6,6 @@
 --dataset_path /scratch-shared/scur0402 --modalities CT MRI --prompt_types point
 --dataset_path /scratch-shared/scur0402 --modalities CT MRI --prompt_types bbox
 --dataset_path /scratch-shared/scur0402 --modalities CT MRI --prompt_types text bbox point --perturb_bbox 1
+--dataset_path /scratch-shared/scur0402 --modalities CT MRI --prompt_types text bbox point --perturb_bbox 5
 --dataset_path /scratch-shared/scur0402 --modalities CT MRI --prompt_types text bbox point --perturb_bbox 10
 --dataset_path /scratch-shared/scur0402 --modalities CT MRI --prompt_types text bbox point --perturb_bbox 50
