@@ -24,7 +24,7 @@ module load 2023
 source $WORK_DIR/.venv/bin/activate
 
 CHECKPOINT_ARRAY=("--epochs 1"
-"--ckpt_path /home/zfulop/adapt_med_seg/lightning_logs/version_{$SLURM_ARRAY_JOB_ID}/checkpoints/epoch=0-step=23.ckpt --epochs 2")
+"--ckpt_path /home/zfulop/adapt_med_seg/lightning_logs/version_$SLURM_ARRAY_JOB_ID/checkpoints/epoch=0-step=23.ckpt --epochs 2")
 #"--ckpt_path /home/zfulop/adapt_med_seg/lightning_logs/version_{$SLURM_ARRAY_JOB_ID}/checkpoints/epoch=1-step=23.ckpt --epochs 3"
 #"--ckpt_path /home/zfulop/adapt_med_seg/lightning_logs/version_{$SLURM_ARRAY_JOB_ID}/checkpoints/epoch=2-step=23.ckpt --epochs 4")
 
