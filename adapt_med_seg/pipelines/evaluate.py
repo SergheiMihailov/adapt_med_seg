@@ -59,7 +59,16 @@ class EvaluatePipeline:
             max_train_samples=None, # never train in eval loop
             max_val_samples=None, # never validate in eval loop
             max_test_samples=self._max_test_samples,
+
+
+        self._model = get_model(
+            model_name=self.model_name,
+            config=SegVolConfig(test_mode=True),
+            modalities=self._dataset.modalities,
+            tasks=self._dataset.labels.values(),
+            **kwargs,
         )
+
         self.dataset_id = self._dataset.dataset_number
 
     def run(self) -> dict[str, dict[str, Any]]:

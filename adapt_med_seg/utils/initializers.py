@@ -6,7 +6,9 @@ from adapt_med_seg.models.segvol_moe import SegVolMoE
 from adapt_med_seg.models.segvol_context_prior import SegVolContextPrior
 
 
-def get_model(model_name: str, config, **kwargs):
+def get_model(
+    model_name: str, config, modalities: list[str], tasks: list[str], **kwargs
+):
     match model_name:
         case "segvol_baseline":
             model = SegVolBase(config)
@@ -29,7 +31,7 @@ def get_model(model_name: str, config, **kwargs):
                 kwargs["train_only_vit"],
             )
         case "segvol_context_prior":
-            model = SegVolContextPrior(config)
+            model = SegVolContextPrior(config, modalities=modalities, tasks=tasks)
         case _:
             raise ValueError(f"Model {model_name} not found.")
     return model

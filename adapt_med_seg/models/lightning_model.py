@@ -9,7 +9,12 @@ from adapt_med_seg.utils.initializers import get_model
 
 class SegVolLightning(LightningModule):
     def __init__(
-        self, model_name: str, modalities: list[str], test_mode: bool = False, **kwargs
+        self,
+        model_name: str,
+        modalities: list[str],
+        tasks: list[str],
+        test_mode: bool = False,
+        **kwargs
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -18,7 +23,7 @@ class SegVolLightning(LightningModule):
         self.modalities = modalities
 
         config = SegVolConfig(test_mode=test_mode)
-        self._model = get_model(model_name, config, **kwargs)
+        self._model = get_model(model_name, config, modalities, tasks, **kwargs)
 
         self.processor = self._model.processor
 
