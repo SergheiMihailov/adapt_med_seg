@@ -12,6 +12,7 @@ from adapt_med_seg.metrics import dice_score
 from adapt_med_seg.utils.initializers import get_model
 from adapt_med_seg.utils.average_meter import AverageMeter
 import pytorch_lightning as pl
+from adapt_med_seg.models.lightning_model import SegVolLightning
 
 
 logging.basicConfig(level=logging.INFO)
@@ -43,14 +44,12 @@ class EvaluatePipeline:
         # self._max_val_samples = kwargs.get("max_val_samples", None)
         self._max_test_samples = kwargs.get("max_test_samples", None)
 
-        self._model = get_model(
-            model_name=self.model_name,
-            config=SegVolConfig(test_mode=True),
-            kwargs=kwargs,
-        )
-
         if self._checkpoint_path:
-            self.(self._checkpoint_path)
+            _ = kwargs.pop("model_name")
+            _ = kwargs.pop("modalities")
+            self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, True, **kwargs)
+            self._model.eval()  
+            logger.info(f"Loaded model checkpoint from {self._checkpoint_path}")
 
         self._dataset = MedSegDataset(
             dataset_path=self._dataset_path,
@@ -62,14 +61,6 @@ class EvaluatePipeline:
             max_test_samples=self._max_test_samples,
         )
         self.dataset_id = self._dataset.dataset_number
-
-    def _load_checkpoint(self, checkpoint_path: str) -> None:
-        # from docs: 
-        # https://lightning.ai/docs/pytorch/stable/common/checkpointing_basic.html
-        self._model = self._model.load_from_checkpoint(checkpoint_path)
-        self._model.eval()  
-        logger.info(f"Loaded model checkpoint from {checkpoint_path}")
-
 
     def run(self) -> dict[str, dict[str, Any]]:
         test_loader = self._dataset.get_test_dataloader(batch_size=self._batch_size)
