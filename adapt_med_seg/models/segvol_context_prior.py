@@ -79,16 +79,16 @@ class ContextPriorPool(nn.Module):
     def get_task_prior(self, task: str):
         # print(f"Getting task prior for task: {task}")
         if task not in self.task_prior_embeddings:
-            print(f"Task prior not found for task: {task}, adding it now")
-            self.add_task_prior(task)
+            raise (f"Task prior not found for task: {task}, adding it now")
+            # self.add_task_prior(task)
 
         return self.task_prior_embeddings[task]
 
     def get_modality_prior(self, modality: str):
         # print(f"Getting modality prior for modality: {modality}")
         if modality not in self.modality_prior_embeddings:
-            print(f"Modality prior not found for modality: {modality}, adding it now")
-            self.add_modality_prior(modality)
+            raise (f"Modality prior not found for modality: {modality}, adding it now")
+            # self.add_modality_prior(modality)
 
         return self.modality_prior_embeddings[modality]
 
@@ -583,7 +583,9 @@ class SegVolContextPrior(SegVolModel):
     SegVol model + using context priors as suggested in http://arxiv.org/abs/2103.00020
     """
 
-    def __init__(self, config: SegVolConfig, **kwargs):
+    def __init__(
+        self, config: SegVolConfig, modalities: list[str], tasks: list[str], **kwargs
+    ):
         super().__init__(config)
 
         pretrained_segvol = AutoModel.from_pretrained(
@@ -593,6 +595,8 @@ class SegVolContextPrior(SegVolModel):
         self.model: SegVol = SegVolContextPriorModel(
             pretrained_segvol=pretrained_segvol,
             config=config,
+            modalities=modalities,
+            tasks=tasks,
         )
 
         clip_tokenizer = AutoTokenizer.from_pretrained("BAAI/SegVol")

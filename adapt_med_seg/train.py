@@ -27,8 +27,13 @@ def main():
     seed_everything(args.seed)
     model_name = kwargs.pop("model_name")
     modalities = kwargs.pop("modalities")
-    model = SegVolLightning(
-        model_name=model_name, modalities=modalities, test_mode=False, **kwargs
+
+    model = SegVolLightning(  #  Quick hack just to get the processor
+        model_name=model_name,
+        modalities=_dataset.modalities,
+        tasks=_dataset.labels.values(),
+        test_mode=False,
+        **kwargs,
     )
 
     _dataset = MedSegDataset(
@@ -41,8 +46,18 @@ def main():
         max_test_samples=None,
     )
 
+    model = SegVolLightning(  # Actual model
+        model_name=model_name,
+        modalities=_dataset.modalities,
+        tasks=_dataset.labels.values(),
+        test_mode=False,
+        **kwargs,
+    )
+
     model.set_dataset(_dataset)
-    train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(batch_size=args.batch_size)
+    train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(
+        batch_size=args.batch_size
+    )
     print("Version param passed: ", args.version_id)
     loggers = [TensorBoardLogger(save_dir=args.log_dir, version=args.version_id)]
     if args.use_wandb:
@@ -64,18 +79,20 @@ def main():
         max_epochs=args.epochs,
         accelerator=args.device,
         logger=loggers,
-        #deterministic=True,
+        # deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
         gradient_clip_val=0.5,
         accumulate_grad_batches=args.accumulate_grad_batches,
         # override the default if we have less than 50 samples
-        log_every_n_steps=min(args.max_train_samples, 50) if args.max_train_samples else 50,
+        log_every_n_steps=(
+            min(args.max_train_samples, 50) if args.max_train_samples else 50
+        ),
         callbacks=[
             lr_monitor,
             checkpoint_callback,
             early_stopping,
-            #StochasticWeightAveraging(swa_lrs=1e-2),
+            # StochasticWeightAveraging(swa_lrs=1e-2),
         ],
     )
     trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)
