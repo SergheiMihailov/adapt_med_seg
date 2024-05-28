@@ -50,7 +50,7 @@ class EvaluatePipeline:
         )
 
         if self._checkpoint_path:
-            self._load_checkpoint(self._checkpoint_path)
+            self.(self._checkpoint_path)
 
         self._dataset = MedSegDataset(
             dataset_path=self._dataset_path,
