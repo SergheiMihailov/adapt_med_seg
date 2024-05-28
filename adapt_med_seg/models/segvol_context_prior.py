@@ -79,7 +79,8 @@ class ContextPriorPool(nn.Module):
     def get_task_prior(self, task: str):
         # print(f"Getting task prior for task: {task}")
         if task not in self.task_prior_embeddings:
-            raise (f"Task prior not found for task: {task}, adding it now")
+            print(task)
+            raise Exception(f"Task prior not found for task: {task}, adding it now")
             # self.add_task_prior(task)
 
         return self.task_prior_embeddings[task]
@@ -87,7 +88,7 @@ class ContextPriorPool(nn.Module):
     def get_modality_prior(self, modality: str):
         # print(f"Getting modality prior for modality: {modality}")
         if modality not in self.modality_prior_embeddings:
-            raise (f"Modality prior not found for modality: {modality}, adding it now")
+            raise Exception(f"Modality prior not found for modality: {modality}, adding it now")
             # self.add_modality_prior(modality)
 
         return self.modality_prior_embeddings[modality]
@@ -412,7 +413,7 @@ class SegVolContextPriorModel(nn.Module):
         modality: str = "unknown",
         **kwargs,
     ):
-        task = train_organs[0]  # Todo: how do we handle multiple tasks?
+        task = train_organs[0] if isinstance(train_organs, list) else train_organs  # Todo: how do we handle multiple tasks?
         modality_prior = self.context_prior_pool.get_modality_prior(modality)
         task_prior = self.context_prior_pool.get_task_prior(task)
 

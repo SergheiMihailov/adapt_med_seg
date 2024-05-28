@@ -27,14 +27,15 @@ class SegVolLightning(LightningModule):
 
         self.processor = self._model.processor
 
-    def load_from_checkpoint(checkpoint_path: str, model_name: str, modalities: list[str], test_mode: bool, **kwargs):
+    def load_from_checkpoint(checkpoint_path: str, model_name: str, modalities: list[str], tasks: list[str], test_mode: bool, **kwargs):
         #model = LightningModule.load_from_checkpoint(checkpoint_path) # bugs out
-        model = SegVolLightning(model_name, modalities, test_mode, **kwargs)
+        model = SegVolLightning(model_name, modalities, tasks, test_mode, **kwargs)
 
         checkpoint = torch.load(checkpoint_path, map_location=model._device)
         print(checkpoint["state_dict"].keys())
         model.state_dict().update(checkpoint["state_dict"])
         model.load_state_dict(checkpoint['state_dict'])
+        model.to(model._device)
 
         return model
         

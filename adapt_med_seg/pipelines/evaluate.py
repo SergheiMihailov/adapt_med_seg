@@ -44,12 +44,10 @@ class EvaluatePipeline:
         # self._max_val_samples = kwargs.get("max_val_samples", None)
         self._max_test_samples = kwargs.get("max_test_samples", None)
 
-        if self._checkpoint_path:
-            _ = kwargs.pop("model_name")
-            _ = kwargs.pop("modalities")
-            self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, True, **kwargs)
-            self._model.eval()  
-            logger.info(f"Loaded model checkpoint from {self._checkpoint_path}")
+        # to break cyclic dependency for task and model.processor
+        _ = kwargs.pop("model_name")
+        _ = kwargs.pop("modalities")
+        self._model = SegVolLightning(self.model_name, self._modalities, [], True, **kwargs)
 
         self._dataset = MedSegDataset(
             dataset_path=self._dataset_path,
@@ -59,15 +57,16 @@ class EvaluatePipeline:
             max_train_samples=None, # never train in eval loop
             max_val_samples=None, # never validate in eval loop
             max_test_samples=self._max_test_samples,
-
-
-        self._model = get_model(
-            model_name=self.model_name,
-            config=SegVolConfig(test_mode=True),
-            modalities=self._dataset.modalities,
-            tasks=self._dataset.labels.values(),
-            **kwargs,
         )
+
+        if self._checkpoint_path:
+            # tasks = list(self._dataset.labels.values()) # this will bug out checkpoint loading if the eval dataset doesnt have a category that the training had
+            tasks = ["unknown", "duodenum", "prostate", "colon cancer", "pancreas", "Edema", "Non-Contrast-Enhancing Tumor Core", "tumour", "arota",
+                     "Enhancing Tumor", "bladder", "esophagus", "prostate/uterus", "right adrenal gland", "gall bladder", "left adrenal gland",
+                     "postcava", "stomach",'liver', 'spleen', 'right kidney', 'left kidney']
+            self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, tasks, True, **kwargs)
+            self._model.eval()  
+            logger.info(f"Loaded model checkpoint from {self._checkpoint_path}")
 
         self.dataset_id = self._dataset.dataset_number
 
@@ -112,13 +111,16 @@ class EvaluatePipeline:
             unit="batch",
         ):
             data_item, gt_npy, modality, task = batch
+            task = task[0]
+            print("task:", task)
             data_item = data_item_to_device(data_item, self._model.device)
 
             # text prompt
             text_prompt = None
             if "text" in self._prompt_types:
-                text_prompt = task[0]
+                text_prompt = task
                 logger.debug("Using text prompt %s" % text_prompt)
+                print("text_prompt:", text_prompt)
 
             # point prompt
             point_prompt, point_prompt_map = None, None
@@ -155,8 +157,8 @@ class EvaluatePipeline:
                 bbox_prompt_map = bbox_prompt_map.to(self._model.device)
                 bbox_prompt_group = (bbox_prompt, bbox_prompt_map)
 
-            self._model.model.test_mode = True
-            pred = self._model.forward_test(
+            self._model._model.test_mode = True
+            pred = self._model._model.forward_test(
                 image=data_item["image"],
                 zoomed_image=data_item["zoom_out_image"],
                 point_prompt_group=point_prompt_group,
@@ -176,7 +178,7 @@ class EvaluatePipeline:
             per_modality_scores[self._dataset.modality_id2name[modality[0]]].update(
                 score
             )
-            per_task_scores[task[0]].update(score)
+            per_task_scores[task].update(score)
             modality_counts[self._dataset.modality_id2name[modality[0]]] += 1
 
 
