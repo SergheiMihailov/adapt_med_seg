@@ -43,14 +43,15 @@ def main():
 
     model.set_dataset(_dataset)
     train_dataloader, val_dataloader = _dataset.get_train_val_dataloaders(batch_size=args.batch_size)
-
-    loggers = [TensorBoardLogger(args.log_dir)]
+    print("Version param passed: ", args.version_id)
+    loggers = [TensorBoardLogger(save_dir=args.log_dir, version=args.version_id)]
     if args.use_wandb:
         wandb_logger = WandbLogger(
             project=args.wandb_project,
             save_dir=args.log_dir,
             log_model="all",
             name=f"{model_name}_{args.dataset_path}",
+            version=args.version_id,
         )
         wandb_logger.watch(model, log="all", log_freq=10)
         loggers.append(wandb_logger)
@@ -62,19 +63,19 @@ def main():
     trainer = Trainer(
         max_epochs=args.epochs,
         accelerator=args.device,
-        # logger=loggers,
-        # deterministic=True,
+        logger=loggers,
+        #deterministic=True,
         num_sanity_val_steps=args.num_sanity_val_steps,
         precision="bf16-mixed" if args.bf16 else "16-mixed" if args.fp16 else 32,
         gradient_clip_val=0.5,
         accumulate_grad_batches=args.accumulate_grad_batches,
         # override the default if we have less than 50 samples
-        log_every_n_steps=min(args.max_len_samples, 50) if args.max_len_samples else 50,
+        log_every_n_steps=min(args.max_train_samples, 50) if args.max_train_samples else 50,
         callbacks=[
             lr_monitor,
             checkpoint_callback,
             early_stopping,
-            StochasticWeightAveraging(swa_lrs=1e-2),
+            #StochasticWeightAveraging(swa_lrs=1e-2),
         ],
     )
     trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=args.ckpt_path)

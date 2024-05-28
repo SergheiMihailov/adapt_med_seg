@@ -80,6 +80,7 @@ def parse_arguments():
     parser.add_argument("--train_only_vit", action="store_true")
     parser.add_argument("--ckpt_path", default=None)
     parser.add_argument("--batch_size", type=int, default=1)
+    parser.add_argument("--version_id", type=str, default=None)
 
     args = parser.parse_args()
     # dataclass can, but argparse can't handle union types,

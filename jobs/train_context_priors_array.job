@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=SegVolContextP
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=00:59:00
+#SBATCH --mem=120G
+#SBATCH --array=1-2%1
+#SBATCH --output=/home/zfulop/adapt_med_seg/jobs/logs/SegVol-context-prior-array_%A_%a.out
+#SBATCH --error=/home/zfulop/adapt_med_seg/jobs/logs/SegVol-context-prior-array_%A_%a.err
+
+date
+
+export HF_DATASETS_CACHE=/scratch-shared/zfulop/hf_cache_dir
+
+WORK_DIR=$HOME/adapt_med_seg
+cd $WORK_DIR
+
+
+module purge
+module load 2023
+source $WORK_DIR/.venv/bin/activate
+
+CHECKPOINT_ARRAY=("--epochs 1"
+"--ckpt_path /home/zfulop/adapt_med_seg/lightning_logs/version_$SLURM_ARRAY_JOB_ID/checkpoints/epoch=0-step=23.ckpt --epochs 2")
+#"--ckpt_path /home/zfulop/adapt_med_seg/lightning_logs/version_{$SLURM_ARRAY_JOB_ID}/checkpoints/epoch=1-step=23.ckpt --epochs 3"
+#"--ckpt_path /home/zfulop/adapt_med_seg/lightning_logs/version_{$SLURM_ARRAY_JOB_ID}/checkpoints/epoch=2-step=23.ckpt --epochs 4")
+
+# print checkpoint array's elements
+echo "These checkpoints will be passed to Lightning: "
+echo "${CHECKPOINT_ARRAY[@]}"
+
+python -m adapt_med_seg.train \
+    --model_name "segvol_context_prior" \
+    --dataset_path /scratch-shared/scur0402 \
+    --modalities CT MRI \
+    --max_train_samples 1 \
+    --max_val_samples 1 \
+    --max_test_samples 1 \
+    --lora_r 16 \
+    --lora_alpha 16 \
+    --version_id $SLURM_ARRAY_JOB_ID \
+    $CHECKPOINT_ARRAY
+
+
