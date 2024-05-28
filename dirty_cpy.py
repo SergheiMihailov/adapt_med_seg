@@ -78,9 +78,13 @@ for dirname, json_name, data_dict in new_data_dicts:
                     print(f"Could not find {source_path}")
                     continue
             dest_path = os.path.join(dest, data_rel_path, source_sample)
-            if not os.path.exists(dest_path):
-                os.makedirs(dest_path)
-            os.system(f"cp -R {source_path}/ {dest_path}")
+            #if not os.path.exists(dest_path):
+             #   os.makedirs(os.dest_path)
+            #input(f'will copy {source_path}/ {dest_path}. exists: {os.path.exists(os.path.dirname(dest_path))}. cont?')
+            rc = os.system(f"cp -R {source_path}/ {dest_path}")
+            if rc != 0:
+                print(f"Could not copy {source_path} --> {dest_path}")
+                raise Exception("copy failed")
             print(f"split {split}: copied {source_path} --> {dest_path}")
             assert os.path.exists(os.path.join(dest, data_rel_path, sample["image"])) or \
                 os.path.exists(os.path.join(dest, os.path.dirname(data_rel_path), sample["image"])), \
