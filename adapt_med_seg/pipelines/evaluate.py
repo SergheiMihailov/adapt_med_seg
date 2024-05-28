@@ -43,11 +43,6 @@ class EvaluatePipeline:
         # self._max_val_samples = kwargs.get("max_val_samples", None)
         self._max_test_samples = kwargs.get("max_test_samples", None)
 
-        self._model = get_model(
-            model_name=self.model_name,
-            config=SegVolConfig(test_mode=True),
-            kwargs=kwargs,
-        )
 
         if self._checkpoint_path:
             self.(self._checkpoint_path)
@@ -60,7 +55,16 @@ class EvaluatePipeline:
             max_train_samples=None, # never train in eval loop
             max_val_samples=None, # never validate in eval loop
             max_test_samples=self._max_test_samples,
+
+
+        self._model = get_model(
+            model_name=self.model_name,
+            config=SegVolConfig(test_mode=True),
+            modalities=self._dataset.modalities,
+            tasks=self._dataset.labels.values(),
+            **kwargs,
         )
+
         self.dataset_id = self._dataset.dataset_number
 
     def _load_checkpoint(self, checkpoint_path: str) -> None:
