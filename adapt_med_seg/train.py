@@ -27,11 +27,27 @@ def main():
     seed_everything(args.seed)
     model_name = kwargs.pop("model_name")
     modalities = kwargs.pop("modalities")
+    tasks = ["background",
+             "spleen",
+             "right kidney",
+             "left kidney",
+             "gall bladder",
+             "esophagus",
+             "liver",
+             "stomach",
+             "arota",
+             "postcava",
+             "pancreas",
+             "right adrenal gland",
+             "left adrenal gland",
+             "duodenum",
+             "bladder",
+             "prostate/uterus"]
 
     model = SegVolLightning(  #  Quick hack just to get the processor
         model_name=model_name,
-        modalities=_dataset.modalities,
-        tasks=_dataset.labels.values(),
+        modalities=modalities,
+        tasks=tasks,
         test_mode=False,
         **kwargs,
     )
@@ -46,10 +62,12 @@ def main():
         max_test_samples=None,
     )
 
+    print("Modalities:", _dataset.modalities)
+    print("Tasks:", list(_dataset.labels.values()))
     model = SegVolLightning(  # Actual model
         model_name=model_name,
         modalities=_dataset.modalities,
-        tasks=_dataset.labels.values(),
+        tasks=list(_dataset.labels.values()),
         test_mode=False,
         **kwargs,
     )
