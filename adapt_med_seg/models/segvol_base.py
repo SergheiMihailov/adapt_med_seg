@@ -21,7 +21,7 @@ class SegVolBase(SegVolModel):
         ).model
 
         # Overwrite the text encoder
-        self.model.text_encoder = TextEncoder()
+        #self.model.text_encoder = TextEncoder()
         # Load the tokenizer
         clip_tokenizer = AutoTokenizer.from_pretrained("BAAI/SegVol")
         self.model.text_encoder.tokenizer = clip_tokenizer

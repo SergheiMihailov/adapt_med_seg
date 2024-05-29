@@ -44,10 +44,20 @@ class EvaluatePipeline:
         # self._max_val_samples = kwargs.get("max_val_samples", None)
         self._max_test_samples = kwargs.get("max_test_samples", None)
 
-        # to break cyclic dependency for task and model.processor
         _ = kwargs.pop("model_name")
         _ = kwargs.pop("modalities")
-        self._model = SegVolLightning(self.model_name, self._modalities, [], True, **kwargs)
+        tasks = ["unknown", "duodenum", "prostate", "colon cancer", "pancreas", "Edema", "Non-Contrast-Enhancing Tumor Core", "tumour", "arota",
+                     "Enhancing Tumor", "bladder", "esophagus", "prostate/uterus", "right adrenal gland", "gall bladder", "left adrenal gland",
+                     "postcava", "stomach",'liver', 'spleen', 'right kidney', 'left kidney']
+
+        if self._checkpoint_path:
+            # tasks = list(self._dataset.labels.values()) # this will bug out checkpoint loading if the eval dataset doesnt have a category that the training had
+            self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, tasks, True, **kwargs)
+            self._model.eval()  
+            logger.info(f"Loaded model checkpoint from {self._checkpoint_path}")
+        else:
+            self._model = SegVolLightning(self.model_name, self._modalities, tasks, True, **kwargs)
+            self._model.eval()
 
         self._dataset = MedSegDataset(
             dataset_path=self._dataset_path,
@@ -58,15 +68,6 @@ class EvaluatePipeline:
             max_val_samples=None, # never validate in eval loop
             max_test_samples=self._max_test_samples,
         )
-
-        if self._checkpoint_path:
-            # tasks = list(self._dataset.labels.values()) # this will bug out checkpoint loading if the eval dataset doesnt have a category that the training had
-            tasks = ["unknown", "duodenum", "prostate", "colon cancer", "pancreas", "Edema", "Non-Contrast-Enhancing Tumor Core", "tumour", "arota",
-                     "Enhancing Tumor", "bladder", "esophagus", "prostate/uterus", "right adrenal gland", "gall bladder", "left adrenal gland",
-                     "postcava", "stomach",'liver', 'spleen', 'right kidney', 'left kidney']
-            self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, tasks, True, **kwargs)
-            self._model.eval()  
-            logger.info(f"Loaded model checkpoint from {self._checkpoint_path}")
 
         self.dataset_id = self._dataset.dataset_number
 
@@ -112,15 +113,20 @@ class EvaluatePipeline:
         ):
             data_item, gt_npy, modality, task = batch
             task = task[0]
-            print("task:", task)
+            #print("task:", task)
             data_item = data_item_to_device(data_item, self._model.device)
 
             # text prompt
             text_prompt = None
             if "text" in self._prompt_types:
-                text_prompt = task
+                #if int(modality[0]) == 0:
+                #    text_prompt = f"A computerized tomography of a {task}"
+                #elif int(modality[0]) == 1:
+                #    text_prompt = f"A magnetic resonance image (MRI) of a {task}"
+                text_prompt = task # the SegVol model if the Promptencoder is not overriden, will attach to it "A computerized tomography of"
+                # we want it to attach it to MRI too because it learnt on CT
                 logger.debug("Using text prompt %s" % text_prompt)
-                print("text_prompt:", text_prompt)
+                print("text_prompt:", text_prompt, "modality:", modality)
 
             # point prompt
             point_prompt, point_prompt_map = None, None
