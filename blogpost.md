@@ -30,7 +30,7 @@ In this section, we will briefly introduce the design and architecture of SegVol
 <table name='fig1' align="center">
   <tr align="center">
     <td>
-    	<img src="assets/SegVol.png" alt="SegVol" style="zoom:30%;" />
+    	<img src="assets/SegVol.png" alt="SegVol" width=500px />
   	</td>
   </tr>
   <tr align="left">
@@ -86,6 +86,8 @@ To successfully train our models to recognise MRI data, we selected $6$ differen
 
 To combine the two sources of data; the M3D-Seg dataset and our collection of MRI datasets, we use the same pre-processing logic and obtain a combined dataset, which we can use for training and evaluation of our models. In practice, noting that the available CT data is an order of magnitude larger than the MRI data we have obtained, we only select a specific subset of the M3D-Seg dataset. This way we get a balanced training and validation set over the two modalities.
 
+<center>
+
 | Dataset                                                      | Segmentations                                               | MRI        | CT   |
 | ------------------------------------------------------------ | ----------------------------------------------------------- | ---------- | ---- |
 | CHAOS [[24]](#ref24)                                         | liver, (left and right) kidneys, spleen                     | 30 (x2)    | 20   |
@@ -98,6 +100,8 @@ To combine the two sources of data; the M3D-Seg dataset and our collection of MR
 | PROMISE-12 [[29]](#ref29)                                    | prostate                                                    | 80         | \-   |
 | SAML dataset [[30]](#ref30)                                  | prostate                                                    | 116        | \-   |
 | T2 Weigthted MRI Prostate Dataset [[31]](#ref31) [[32]](#ref32) | prostate                                                    | 114        | \-   |
+
+</center>
 <table name='tab1'>
 <tr>
 <td colspan="4"><b>Table 1.</b> Datasets used in our experiments. We re-used four sub-sets of the M3D-Seg dataset and pre-processed an additional $6$ datasets to obtain MRI data of comparable size. The number of CT and MRI samples per dataset can be seen on the last two columns. In the CHAOS datasets, each case corresponds to two volumetric images, one obtained from the In-Phase and one from the Out-Phase of the MRI machine (hence the x2 multiplier). Similarly, in the BRaTS dataset, the raw output of the MRI machines was later processed using four different techniques; namely (i) native T1-weighted, (ii) post contrast T1-Weighted, (iii) T2-Weighted and (iv) T2 Fluid Attenuated Inversion Recovery methods. For each case in the provided dataset, there are four associated volumes available (hence the x4 multiplier).
@@ -143,7 +147,8 @@ Furthermore, the context priors, after being passed through the prior fusion blo
 </table>
 
 We apply the approach taken by Hermes to the pre-trained SegVol model, with slight modifications, as described below. You can refer to the figure above for an overview.
-- **Context prior pool.** Following the approach from the Hermes paper, we introduce a context prior pool. Whenever the model encounters a new modality or task (which are known in advance per dataset), a new context prior is added to the pool. **Prior fusion.** To adapt the image encoder output and obtain the posterior tokens, we introduce the prior fusion attention module. 
+- **Context prior pool.** Following the approach from the Hermes paper, we introduce a context prior pool. Whenever the model encounters a new modality or task (which are known in advance per dataset), a new context prior is added to the pool. 
+- **Prior fusion.** To adapt the image encoder output and obtain the posterior tokens, we introduce the prior fusion attention module. 
 - **Posterior prototype.** We use the posterior tokens obtained from prior fusion to adapt the mask decoder output. As opposed to Hermes, we use the posterior tokens as an additive adaptation to the mask decoder output tokens, rather than as a multiplicative adaptation over the feature map resulting from the mask decoder. We take this approach as we focus on single-class tasks, thus posterior prototypes as presented in the original paper would not be meaningful to our case.
 - **Fine-tuning the SegVol image encoder and mask decoder.** In Hermes, the task and modality priors are learned together with the backbone. Since SegVol is pre-trained, we fine-tune its image encoder and mask decoder using LoRA for better integration with the Hermes architecture. 
 - **Modality prediction loss.** Unlike in Hermes, we do not implement the auxiliary modality prediction loss, since it was shown, in the original paper, to only yield a minor improvement.
@@ -163,16 +168,14 @@ Finally, we introduce Context-prior pooling to the SegVol model, as described in
 ### Evaluation metrics
 
 In all our experiments, we compute the average Dice Similarity Coefficient (dice score) over the different modalities and tasks as well as the average dice score over all samples in the testing data. More precisely, the dice score is computed as follows:
-$$
-\text{dice}(X,Y)=\frac{2\vert X\cap Y\vert}{\vert X\vert + \vert Y\vert},
-$$
+$$\text{dice}(X,Y)=\frac{2\vert X\cap Y\vert}{\vert X\vert + \vert Y\vert}$$
 where $\vert X\cup Y\vert$ denotes the cardinality of the intersection of the predicted masks $X$, and the ground truth $Y$. The denominator serves as a normalisation term.
 
 ## Results
 
 Based on preliminary evaluation, we have reproduced SegVol performance on CT and MRI data, obtaining results as reporting in the SegVol paper.
 
-### Table #: External Validation Results of LoRA and Context Priors on MRI and CT Datasets
+<center>
 
 | **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                          |
 |---------------------------|-------------------------------------------|--------------------------------------------------------|-------------------------------------|
@@ -188,23 +191,29 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 |                           | MRI Prostate                              | Potential improvement over LoRA on MRI prostate        | TBD                                 |
 |                           | MRI Brain                                 | Potential improvement over LoRA on MRI brain           | TBD                                 |
 
+</center>
+
+<table name='tab2'>
+<tr>
+<td colspan="4"><b>Table 2.</b> External Validation Results of LoRA and Context Priors on MRI and CT Datasets.
+</tr></table>
+
 *Note: The results are presented as mean Dice scores.*
 
-### Table #: Dice Scores for Different Organs Using SegVol Baseline, LoRA, and Context Priors
+<center>
 
 | **Organ**                  | **SegVol Baseline (MRI + CT)** | **LoRA (MRI + CT)**       | **Context Priors (MRI + CT)** | **Results** |
 |----------------------------|--------------------------------|---------------------------|-------------------------------|-------------|
 | **Prostate**               | TBD                            | TBD                       | TBD                           | TBD         |
 | **Brain**                  | TBD                            | TBD                       | TBD                           | TBD         |
 
+</center>
+<table name='tab3'>
+<tr>
+<td colspan="4"><b>Table 3.</b> Dice Scores for Different Organs Using SegVol Baseline, LoRA, and Context Priors.
+</tr></table>
 
 *Note: The results are presented as mean Dice scores.*
-
-
-
-
-
-
 
 
 
@@ -317,7 +326,8 @@ Toward Universal Medical Image Segmentation.”
 
 <a name='ref34'>[34]</a>: Alec Radford and Jong Wook Kim and Chris Hallacy and Aditya Ramesh and Gabriel Goh and Sandhini Agarwal and Girish Sastry and Amanda Askell and Pamela Mishkin and Jack Clark and Gretchen Krueger and Ilya Sutskever, 2021, Learning Transferable Visual Models From Natural Language Supervision, 
 
-<a name='ref35'>35</a> **[ arXiv:2405.09673](https://arxiv.org/abs/2405.09673)**
+
+<a name='ref35'>[35]</a>: Dan Biderman, Jose Gonzalez Ortiz, Jacob Portes, Mansheej Paul, Philip Greengard, Connor Jennings, Daniel King, Sam Havens, Vitaliy Chiley, Jonathan Frankle, Cody Blakeney, and John P. Cunningham. 2024. "LoRA Learns Less and Forgets Less." [arXiv:2405.09673](https://arxiv.org/abs/2405.09673)
 
 
 ### Appendix: MRI leakage in M3D-Seg
