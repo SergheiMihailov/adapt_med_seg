@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 import logging
 import torch
 from typing import Any
+import os
+import yaml
 
 from tqdm import tqdm
 import wandb
@@ -46,18 +48,12 @@ class EvaluatePipeline:
 
         _ = kwargs.pop("model_name")
         _ = kwargs.pop("modalities")
+        # this could be even empty, doesn't matter
         tasks = ["unknown", "duodenum", "prostate", "colon cancer", "pancreas", "Edema", "Non-Contrast-Enhancing Tumor Core", "tumour", "arota",
                      "Enhancing Tumor", "bladder", "esophagus", "prostate/uterus", "right adrenal gland", "gall bladder", "left adrenal gland",
                      "postcava", "stomach",'liver', 'spleen', 'right kidney', 'left kidney']
-
-        if self._checkpoint_path:
-            # tasks = list(self._dataset.labels.values()) # this will bug out checkpoint loading if the eval dataset doesnt have a category that the training had
-            self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, tasks, True, **kwargs)
-            self._model.eval()  
-            logger.info(f"Loaded model checkpoint from {self._checkpoint_path}")
-        else:
-            self._model = SegVolLightning(self.model_name, self._modalities, tasks, True, **kwargs)
-            self._model.eval()
+        # break the cyclic dependency. this is not the real model but just to get the processor
+        self._model = SegVolLightning(self.model_name, self._modalities, tasks, True, **kwargs)
 
         self._dataset = MedSegDataset(
             dataset_path=self._dataset_path,
@@ -68,6 +64,21 @@ class EvaluatePipeline:
             max_val_samples=None, # never validate in eval loop
             max_test_samples=self._max_test_samples,
         )
+
+        print("Modalities:", self._dataset.modalities)
+        print("Tasks:", list(self._dataset.labels.values()))
+        if self._checkpoint_path:
+            # tasks = list(self._dataset.labels.values()) # this will bug out checkpoint loading if the eval dataset doesnt have a category that the training had
+            # instead read from the hparams.yaml
+            data = yaml.safe_load(os.path.join(self._checkpoint_path, "..", "..","hparams.yaml"))
+            tasks = data['tasks']
+            self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, tasks, True, **kwargs)
+            self._model.eval()  
+            logger.info(f"Loaded model checkpoint from {self._checkpoint_path}")
+            print("Loaded model checkpoint from", self._checkpoint_path)
+        else:
+            self._model = SegVolLightning(self.model_name, self._modalities, list(self._dataset.labels.values()), True, **kwargs)
+            self._model.eval()
 
         self.dataset_id = self._dataset.dataset_number
 
