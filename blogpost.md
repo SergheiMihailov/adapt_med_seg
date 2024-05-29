@@ -173,14 +173,12 @@ where $\vert X\cup Y\vert$ denotes the cardinality of the intersection of the pr
 
 <table align="center" name="fig4">
   <tr align="center">
-      <td><img src="./assets/dice_metric.png"></td>
+      <td><img src="./assets/dice_metric.png" width=600px></td>
   </tr>
   <tr align="left">
-    <td colspan="2"><b>Figure 4.</b> Illustration of the Dice score metric, showing the overlap between the predicted mask (<i>X</i>) and the ground truth mask (<i>Y</i>).</td>
+    <td colspan="2"><b>Figure 4.</b> Illustration of the Dice score metric, showing the overlap between the ground truth mask (<i>Y</i>) and the predicted mask (<i>X</i>).</td>
   </tr>
 </table>
-
-illustrates the application of the Dice score metric, demonstrating the overlap between the predicted and ground truth masks.
 
 ## Results
 
@@ -229,6 +227,15 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 
 ## Discussion and Conclusion
+
+Our study aimed to enhance the SegVol model's performance on MRI data using Low-Rank Adaptation (LoRA), Mixture of Adapters (MoA), and Context-prior learning. Preliminary experiments established a robust baseline for the SegVol model across CT scans. The application of LoRA was evaluated to determine its impact on MRI segmentation. Through experimentation we found that [x]. Aditionally, to mitigate potential performance degradation on CT, a binary gated mixture of adapters was implemented. This contributed to [x]. Furthermore, integrating Context-prior learning aimed to dynamically adapt the model to various imaging modalities and tasks resulting in [x]. 
+
+Detailed performance metrics are summarized in [Table 2](#tab2). Here we see that our method [x] as compared to the SegVol baseline. With regards to the performance of the model on different organs we can see from [Table 3](#tab3) that [x]
+
+
+
+
+
 
 
 ## Invidual Contributions
