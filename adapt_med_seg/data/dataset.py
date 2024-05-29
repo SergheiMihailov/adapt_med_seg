@@ -52,6 +52,8 @@ class MedSegDataset(Dataset):
         self._max_val_samples = max_val_samples
         self._max_test_samples = max_test_samples
 
+        self._idx_trace = []
+
         # make warning if misued
         if not self.train and self._max_train_samples is not None:
             logging.warning(
@@ -79,6 +81,9 @@ class MedSegDataset(Dataset):
         global_label = self._labels[label_map["global_idx"]]
         # local label is what we use to index the ground truth
         local_label = int(label_map["local_idx"])
+        # save the requested index to allow the evaluator to find out which dataset
+        # the sample came from
+        self._idx_trace.append(idx)
 
         ct_npy, gt_npy = self._processor.load_uniseg_case(ct_path, gt_path)
 
@@ -149,6 +154,7 @@ class MedSegDataset(Dataset):
         self._gt_paths = []
         self._case_modality = []
         self._case_label = []
+        self._case_dataset = []
         # M3D-Seg does not specify a validation split so we re-use the test split.
         # not ideal but oh well...
         splits = (
@@ -158,22 +164,22 @@ class MedSegDataset(Dataset):
         )
         self._data_idxs = {split[0]: [] for split in splits}
 
-        dataset_names = []
-        dataset_numbers = []
+        self.dataset_names = []
+        self.dataset_numbers = []
         for json_path in self._data_dict.keys():
             dataset_name, dataset_number = self._load_single_dataset(json_path, splits)
-            dataset_names.append(dataset_name)
-            dataset_numbers.append(dataset_number)
+            self.dataset_names.append(dataset_name)
+            self.dataset_numbers.append(dataset_number)
 
         self._name = (
-            dataset_names[0]
-            if len(dataset_names) == 1
-            else f"{'/'.join(dataset_names)}"
+            self.dataset_names[0]
+            if len(self.dataset_names) == 1
+            else f"{'/'.join(self.dataset_names)}"
         )
         self._dataset_number = (
-            dataset_numbers[0]
-            if len(dataset_numbers) == 1
-            else f"{'/'.join(dataset_numbers)}"
+            self.dataset_numbers[0]
+            if len(self.dataset_numbers) == 1
+            else f"{'/'.join(self.dataset_numbers)}"
         )
 
         # shuffle the data indices, otherwise they will be sorted by dataset
@@ -291,6 +297,7 @@ class MedSegDataset(Dataset):
                     self._case_modality.append(int(case_.get("modality", "0")))
                     self._case_label.append(llm)
                     self._data_idxs[split].append(base + idx)
+                    self._case_dataset.append(dataset_number) # typically name and _number are the same
                     idx += 1
                 split_sample_count[split] -= 1 # substract, even if -1
                 if split_sample_count[split] == 0:
@@ -361,3 +368,7 @@ class MedSegDataset(Dataset):
     @property
     def data_dict(self) -> dict[str, Any]:
         return self._data_dict
+
+    def get_last_dataset_names(self, batch_size: int) -> List[str]:
+        """Return the dataset names of the batch_size last data items."""
+        return [self._case_dataset[idx] for idx in self._idx_trace[-batch_size:]]
