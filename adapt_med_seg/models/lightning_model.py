@@ -32,7 +32,7 @@ class SegVolLightning(LightningModule):
         model = SegVolLightning(model_name, modalities, tasks, test_mode, **kwargs)
 
         checkpoint = torch.load(checkpoint_path, map_location=model._device)
-        # print(checkpoint["state_dict"].keys())
+        print(checkpoint["state_dict"].keys())
         model.state_dict().update(checkpoint["state_dict"])
         model.load_state_dict(checkpoint['state_dict'])
         model.to(model._device)
