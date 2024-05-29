@@ -6,7 +6,10 @@ import os
 import yaml
 
 from tqdm import tqdm
+from collections import defaultdict
 import wandb
+import json
+import os
 
 from adapt_med_seg.data.dataset import MedSegDataset, data_item_to_device
 from SegVol.model_segvol_single import SegVolConfig, generate_box, build_binary_cube
@@ -41,6 +44,14 @@ class EvaluatePipeline:
         self._prompt_types = kwargs["prompt_types"]
         self._perturb_bbox = kwargs["perturb_bbox"] # default=None
         self._checkpoint_path = kwargs.get("ckpt_path", None)
+        self._log_every_n_steps = kwargs.get("log_every_n_steps", 10) # log to wandb every n steps
+        self._log_dir = kwargs.get("log_dir", None)
+        if self._log_dir is not None:
+            try:
+                os.makedirs(self._log_dir, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create log dir: {e}")
+                self._log_dir = None
 
         # self._max_train_samples = kwargs.get("max_train_samples", None)
         # self._max_val_samples = kwargs.get("max_val_samples", None)
@@ -85,19 +96,17 @@ class EvaluatePipeline:
     def run(self) -> dict[str, dict[str, Any]]:
         test_loader = self._dataset.get_test_dataloader(batch_size=self._batch_size)
 
-        preds, labels = [], []
-
         results = {}
 
         avg_dice_score = AverageMeter()
-        per_modality_scores = {
-            modality_name: AverageMeter()
-            for modality_name in self._dataset.modality_name2id.keys()
-        }
-        per_task_scores = {
-            task: AverageMeter() for task in self._dataset.labels.values()
-        }
-        modality_counts = {modality_name: 0 for modality_name in per_modality_scores.keys()}
+        per_dataset_modality_task_scores = {}
+        per_dataset_modality_task_counts = {}
+        for dataset_num in self._dataset.dataset_numbers:
+            per_dataset_modality_task_scores[dataset_num] = {}
+            per_dataset_modality_task_counts[dataset_num] = {}
+            for modality in self._dataset._modalities:
+                per_dataset_modality_task_scores[dataset_num][modality] = defaultdict(AverageMeter)
+                per_dataset_modality_task_counts[dataset_num][modality] = defaultdict(int)
 
         logger.info("Evaluating %s on dataset %s", self.model_name, self.dataset_id)
 
@@ -117,15 +126,20 @@ class EvaluatePipeline:
                 }
             )
 
-        for batch in tqdm(
+        for idx, batch in enumerate(tqdm(
             test_loader,
             desc=f"Evaluating {self._dataset.name}",
             unit="batch",
-        ):
+        )):
             data_item, gt_npy, modality, task = batch
             task = task[0]
             #print("task:", task)
             data_item = data_item_to_device(data_item, self._model.device)
+
+            # hard-coding to bs=1 to avoid unnecessary bugs.
+            # this is *not* what breaks batching in this poop storm of a codebase
+            case_dataset_name = self._dataset.get_last_dataset_names(1)[0]
+            case_modality = self._dataset.modality_id2name[modality[0]]
 
             # text prompt
             text_prompt = None
@@ -181,43 +195,72 @@ class EvaluatePipeline:
                 point_prompt_group=point_prompt_group,
                 bbox_prompt_group=bbox_prompt_group,
                 text_prompt=text_prompt,
-                modality=self._dataset.modality_id2name[modality[0]],
+                modality=case_modality,
                 use_zoom=True,
             )
 
-            preds.append(pred[0][0])
-            # labels.append(gt_npy)
-            labels.append(data_item["label"][0][0])
             score = dice_score(
-                preds[-1].to(self._model.device), labels[-1].to(self._model.device)
+                pred[0][0].to(self._model.device), data_item["label"][0][0].to(
+                    self._model.device)
             )
             avg_dice_score.update(score)
-            per_modality_scores[self._dataset.modality_id2name[modality[0]]].update(
-                score
-            )
-            per_task_scores[task].update(score)
-            modality_counts[self._dataset.modality_id2name[modality[0]]] += 1
+            per_dataset_modality_task_scores[case_dataset_name][case_modality][task].update(score)
+            per_dataset_modality_task_counts[case_dataset_name][case_modality][task] += 1
 
+            # log to wandb every n steps
+            if idx % self._log_every_n_steps == 0:
+                results = {
+                    "dice": float(avg_dice_score.avg),
+                    "per_dataset_modality_task_dice": {
+                        dataset: {
+                            modality_name: {
+                                task: float(score.avg)
+                                for task, score in scores.items()
+                            } for modality_name, scores in scores.items()
+                        } for dataset, scores in per_dataset_modality_task_scores.items()
+                    },
+                    "per_dataset_modality_task_counts": per_dataset_modality_task_counts
+                }
+                # log to stdout and log dir if specified
+                result_str = json.dumps({idx: results}, indent=4)
+                if self._log_dir:
+                    try:
+                        with open(f"{self._log_dir}/results_{idx}.json", "w") as f:
+                            f.write(result_str)
+                    except Exception as e:
+                        # avoid unnexessary bugs
+                        logger.error(f"Failed to write results to log dir: {e}")
+                print(result_str)
+                # also to wandb if requested
+                if self._use_wandb:
+                    wandb.log(
+                        {
+                            "dice_score": results["dice"],
+                            "per_dataset_modality_task_dice": \
+                                results["per_dataset_modality_task_dice"],
+                            "per_dataset_modality_task_counts": \
+                                results["per_dataset_modality_task_counts"],
+                        }
+                    )
 
         results = {
             "dice": float(avg_dice_score.avg),
-            "per_modality_dice": {
-                modality_name: float(score.avg)
-                for modality_name, score in per_modality_scores.items()
+            "per_dataset_modality_task_dice": {
+                dataset: {
+                    modality_name: {
+                        task: float(score.avg)
+                        for task, score in scores.items()
+                    } for modality_name, scores in scores.items()
+                } for dataset, scores in per_dataset_modality_task_scores.items()
             },
-            "per_task_dice": {
-                task: float(score.avg) for task, score in per_task_scores.items()
-            },
-            "modality_counts": modality_counts,
+            "per_dataset_modality_task_counts": per_dataset_modality_task_counts,
         }
-
         if self._use_wandb:
             wandb.log(
                 {
                     "dice_score": results["dice"],
-                    "per_modality_dice": results["per_modality_dice"],
-                    "per_task_dice": results["per_task_dice"],
-                    "modality_counts": results["modality_counts"],
+                    "per_dataset_modality_task_dice": results["per_dataset_modality_task_dice"],
+                    "per_dataset_modality_task_counts": results["per_dataset_modality_task_counts"],
                 }
             )
             wandb.finish()

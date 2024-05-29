@@ -77,23 +77,20 @@ def parse_arguments():
         action="store",
     )
 
-    meta_parser = parser.add_argument_group(
-        "metadata", description="JSON metadata for the dataset"
-    )
-    meta_parser.add_argument(
-        "--dataset_type",
-        type=str,
-        required=True,
-        action="store",
-        help="""Type of dataset (AMOS, CHAOS, ...)
-                                Both the splits and the modality of the images will be inferred from the metadata""",
-        choices=["AMOS", "CHAOS", "PROMISE12", "MSD_Prostate", "T2W-MRI", "SAML"],
-    )
+    meta_parser = parser.add_argument_group('metadata',
+                              description='JSON metadata for the dataset')
+    meta_parser.add_argument('--dataset_type',
+                        type=str,
+                        required=True,
+                        action='store',
+                        help='''Type of dataset (AMOS, CHAOS, ...)
+                                Both the splits and the modality of the images will be inferred from the metadata''',
+                        choices=['AMOS', 'CHAOS', 'PROMISE12', 'MSD_Prostate', 'T2W-MRI', 'SAML', 'BRATS2021'])
 
     args = parser.parse_args()
     # concatenate the classes, if they are parsed as a list of characters
     for idx, c in enumerate(args.classes):
         if isinstance(c, list):
-            args.classes[idx] = "".join(c)
-
+            args.classes[idx] = ''.join(c)
+        args.classes[idx] = args.classes[idx].replace('_', ' ')
     return args

@@ -1,34 +1,50 @@
 #!/bin/bash
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --job-name=AMOS_preprocess
+#SBATCH --ntasks=1
+#SBATCH --time=00:59:00
+#SBATCH --output=/home/scur0402/jobs/logs/preprocess_%A.out
 
-# This script preprocesses the data for the training and testing of the model.
+module purge
+module load 2023
+module load Python/3.11.3-GCCcore-12.3.0
+
+# curl -sSL https://install.python-poetry.org | python3 -
+
+# shared home dir
+WORKDIR=/home/scur0402/Miki/adapt_med_seg
+cd $WORKDIR
+source $WORKDIR/.preprocess_venv/bin/activate
 cd preprocessing
 
-# CLI arguments
-
-# common
-CLASSES=("prostate")
-DATASET_ROOTS_ROOT='../datasets' # rel. to preprocessing
-SAVE_ROOTS_ROOT='../datasets/processed' # rel. to preprocessing
-NUM_WORKERS=4
+CLASSES="spleen right_kidney left_kidney gall_bladder esophagus liver stomach arota postcava pancreas right_adrenal_gland left_adrenal_gland duodenum bladder prostate/uterus"
+#CLASSES='Non-Contrast-Enhancing_Tumor_Core Enhancing_Tumor Edema'
+DATASET_ROOTS_ROOT="/scratch-shared/scur0402" 
+SAVE_ROOTS_ROOT="/scratch-shared/scur0402"
+NUM_WORKERS=32
 SEED=42
 TEST_RATIO=0.2
 VAL_RATIO=0.2
 # dataset-specific
-DATASET_ROOTS=("MSD" "promise12" "SAML" "T2-weighted-MRI")
-DATASET_CODES=("MSD_mr_42" "promise12_mr_42" "SAML_mr_42" "T2-weighted-MRI_mr_42")
+DATASET_ROOTS=("AMOS_2022")
+#DATASET_ROOTS=("BRATS2021")
+DATASET_CODES=("amos_mrct_42")
+#DATASET_CODES=("brats_mr_42")
 SAVE_ROOTS=$DATASET_ROOTS
-DATASET_TYPES=("MSD_Prostate" "PROMISE12" "SAML" "T2W-MRI")
+DATASET_TYPES=("AMOS")
+#DATASET_TYPES=("BRATS2021")
 
 # iterate 4 times and preprocess each dataset
 # with the respective dataset-specific arguments
 for i in {0..3}
 do
-    echo "poetry run python preprocess.py" \
+    echo "python preprocess.py" \
         "--dataset_root $DATASET_ROOTS_ROOT/${DATASET_ROOTS[i]} "\
         "--save_root $SAVE_ROOTS_ROOT/${SAVE_ROOTS[i]} "\
         "--dataset_code ${DATASET_CODES[i]} "\
         "--dataset_type ${DATASET_TYPES[i]} "\
-        "--classes ${CLASSES[@]} "\
+        "--classes ${CLASSES} "\
         "--num_workers $NUM_WORKERS "\
         "--seed $SEED "\
         "--test_ratio $TEST_RATIO "\
