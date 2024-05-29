@@ -7,7 +7,7 @@ Defines:
 """
 
 import os
-import zipfile as zf
+import tarfile as tf
 import requests
 from typing import Dict, List, Tuple
 from monai.transforms import (
@@ -16,12 +16,9 @@ from monai.transforms import (
     Compose,
     ToNumpy
 )
+from monai.data.image_reader import NibabelReader
 
-from util import SPLIT_NAMES, two_way_split
-
-BRATS2021_LABELS = {
-    '1': 'brain'
-}
+from util import SPLIT_NAMES, three_way_split, load_callback
 
 def brats2021_data_download(data_root: str) -> str:
     """
@@ -31,37 +28,49 @@ def brats2021_data_download(data_root: str) -> str:
 
     Returns the path to the extracted data.
     """
-    brats2021_data_url = 'https://www.kaggle.com/api/v1/datasets/download/syedsajid/brats2021?datasetVersionNumber=3'
-    brats2021_data_path = os.path.join(data_root, 'brats2021.zip')
+    # kaggle datasets download -d dschettler8845/brats-2021-task1
+    brats2021_data_path = os.path.join(data_root, 'BraTS2021_Training_Data.tar')
     brats2021_data_dir = os.path.join(data_root, 'brats2021')
     # data_root is where we extract the data
     os.makedirs(data_root, exist_ok=True)
 
     # download and extract the data
     if not os.path.exists(brats2021_data_dir):
-        if not os.path.exists(brats2021_data_path):
-            print('Downloading Brats2021 data...')
-            r = requests.get(brats2021_data_url, allow_redirects=True)
-            with open(brats2021_data_path, 'wb') as f:
-                f.write(r.content)
+        import kaggle
+        kaggle.api.dataset_download_cli('dschettler8845/brats-2021-task1',
+                                        path=data_root, force=False, unzip=True)
         # extract the data
         print('Extracting Brats2021 data...')
-        with zf.ZipFile(brats2021_data_path, 'r') as z:
-            z.extractall(data_root)
+        with tf.open(brats2021_data_path) as tar:
+            tar.extractall(brats2021_data_dir)
         # remove the zip file
         if os.path.exists(brats2021_data_path):
             os.remove(brats2021_data_path)
     else:
         print('Brats2021 data already exists.')
 
-    return data_root
+    return brats2021_data_dir
 
 
-def brats2021_image_loader(file_path: str):
-    return Compose([LoadImage(image_only=True), EnsureChannelFirst(), ToNumpy()])(file_path)
+BRATS2021_LABELS = {
+    # NCR: Non-Contrast-Enhancing Tumor Core, ET: Enhancing Tumor, ED: Edema
+    '1': 'Non-Contrast-Enhancing Tumor Core',
+    '2': 'Enhancing Tumor',
+    '3': 'Edema'
+}
 
-def brats2021_label_loader(file_path: str):
-    return Compose([LoadImage(image_only=True), EnsureChannelFirst(), ToNumpy()])(file_path)
+brats2021_image_loader = Compose(
+    [
+        LoadImage(reader=NibabelReader),
+        EnsureChannelFirst(channel_dim="no_channel"),
+        ToNumpy()
+    ])
+
+def brats2021_label_loader(label_path: str):
+    gt_mask = brats2021_image_loader(label_path)
+    # replace label 4 (ED) with label 3 to have contiguous labels
+    gt_mask[gt_mask == 4] = 3
+    return gt_mask
 
 def parse_brats2021(data_root: str, val_ratio: float = 0.2, test_ratio: float = 0.4) -> Tuple[Dict, Dict, List]:
     """
@@ -69,39 +78,52 @@ def parse_brats2021(data_root: str, val_ratio: float = 0.2, test_ratio: float = 
     validation ratio is not consider since dataset 
     its already divided in train and val 
     """
-    brats2021_data_download(data_root)
+    data_root = brats2021_data_download(data_root)
 
-    data_paths = {
-        'train': os.path.join(data_root, 'MICCAI_FeTS2021_TrainingData', 'MICCAI_FeTS2021_TrainingData'),
-        'val': os.path.join(data_root, 'MICCAI_FeTS2021_ValidationData', 'MICCAI_FeTS2021_ValidationData')
-    }
+    # each sample is in their designated directories formatted as
+    # BraTS2021_?????/BraTS2021_?????_[type].nii.gz
+    # where type is one of flair, t1, t1ce, t2, seg
+    # seg is the ground truth segmentation
+    prefix = 'BraTS2021_'
 
     data_splits = {key: [] for key in SPLIT_NAMES}
     modality_info = {key: [] for key in SPLIT_NAMES}
     classes = ['flair', 't1', 't1ce', 't2']
 
-    def process_split(split_name, data_dir, has_labels=True):
-        for subject in sorted(os.listdir(data_dir)):
-            subject_path = os.path.join(data_dir, subject)
-            if not os.path.isdir(subject_path):
-                continue
-            images = {modality: os.path.join(subject_path, f'{subject}_{modality}.nii') for modality in classes}
-            labels = os.path.join(subject_path, f'{subject}_seg.nii') if has_labels else None
-            data_splits[split_name].append((subject, images, labels))
-            modality_info[split_name].append(classes)
+    def process_sample(sample_dir: str, sample_id: str):
+        sample = {}
+        for type_ in classes:
+            modality_path = os.path.join(sample_dir, f'{prefix}{sample_id}_{type_}.nii.gz')
+            sample[type_] = modality_path
+        label_path = os.path.join(sample_dir, f'{prefix}{sample_id}_seg.nii.gz')
+        sample['label'] = label_path
+        return sample
 
-    process_split('train', data_paths['train'])
-    process_split('val', data_paths['val'], has_labels=False)
+    data_list = []
+    modality_list = []
+    # iterate over the data directory
+    for sample_dir in os.listdir(data_root):
+        if not sample_dir.startswith(prefix):
+            continue
+        sample_id = sample_dir[len(prefix):]
+        sample = process_sample(os.path.join(data_root, sample_dir), sample_id)
+        label_path = os.path.join(data_root, sample_dir, sample.pop('label'))
+        label_loader = load_callback(brats2021_label_loader, label_path)
+        for type_ in classes:
+            image_path = os.path.join(data_root, sample_dir, sample[type_])
+            image_loader = load_callback(brats2021_image_loader, image_path)
+            data_list.append((f'{sample_id}_{type_}', image_loader, label_loader))
+            modality_list.append('1') # MRI
 
-    # Split the validation data into val and test
-    val_data = data_splits['val']
-    val_modality_info = modality_info['val']
-    
-    val_split, test_split = two_way_split(val_data, val_modality_info, val_ratio=test_ratio)
-    data_splits['val'] = val_split[0]
-    modality_info['val'] = val_split[1]
-    data_splits['test'] = test_split[0]
-    modality_info['test'] = test_split[1]
+    train_set, val_set, test_set = three_way_split(data_list, modality_list,
+                                                   val_ratio=val_ratio,
+                                                   test_ratio=test_ratio)
+    data_splits['train'] = train_set[0]
+    modality_info['train'] = train_set[1]
+    data_splits['val'] = val_set[0]
+    modality_info['val'] = val_set[1]
+    data_splits['test'] = test_set[0]
+    modality_info['test'] = test_set[1]
 
     print('train:', len(data_splits['train']),
           'val:', len(data_splits['val']),

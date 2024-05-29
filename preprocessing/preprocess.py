@@ -24,6 +24,7 @@ def preprocess_image(info):
     """
     name, img_loader, label_loader, modality, label_map, save_path = info
     # check if the case already exists
+    print(save_path, name)
     case_path = os.path.join(save_path, name)
     os.makedirs(case_path, exist_ok=True)
     if (
@@ -93,29 +94,23 @@ def run(args: Namespace):
     elif args.dataset_type.startswith("MSD"):
         dataset_name = args.dataset_type.split("_")
         if len(dataset_name) != 2:
-            raise ValueError(
-                f"Invalid dataset name: {args.dataset_type}. Try e.g MSD_Prostate"
-            )
-        data_splits, modality_info, classes = parse_msd(
-            data_root=args.dataset_root,
-            test_ratio=args.test_ratio,
-            val_ratio=args.val_ratio,
-            dataset=dataset_name[1],
-        )
-    elif args.dataset_type == "T2W-MRI":
-        data_splits, modality_info, classes = parse_t2w_mri(
-            data_root=args.dataset_root,
-            test_ratio=args.test_ratio,
-            val_ratio=args.val_ratio,
-        )
-    elif args.dataset_type == "SAML":
-        data_splits, modality_info, classes = parse_saml(
-            args.dataset_root, test_ratio=args.test_ratio, val_ratio=args.val_ratio
-        )
-    elif args.dataset_type == "brats2021":
-        data_splits, modality_info, classes = parse_brats2021(
-            args.dataset_root, test_ratio=args.test_ratio, val_ratio=args.val_ratio
-        )
+            raise ValueError(f'Invalid dataset name: {args.dataset_type}. Try e.g MSD_Prostate')
+        data_splits, modality_info, classes = parse_msd(data_root=args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio,
+                                                        dataset=dataset_name[1])
+    elif args.dataset_type == 'T2W-MRI':
+        data_splits, modality_info, classes = parse_t2w_mri(data_root=args.dataset_root,
+                                                            test_ratio=args.test_ratio,
+                                                            val_ratio=args.val_ratio)
+    elif args.dataset_type == 'SAML':
+        data_splits, modality_info, classes = parse_saml(args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio)
+    elif args.dataset_type == 'BRATS2021':
+        data_splits, modality_info, classes = parse_brats2021(args.dataset_root,
+                                                        test_ratio=args.test_ratio,
+                                                        val_ratio=args.val_ratio)
     else:
         raise ValueError(f"Unknown dataset code: {args.dataset_type}")
     # obtain (required_class_id, configured_class_id) mapping for the ground truth labels
