@@ -5,10 +5,10 @@
 #SBATCH --job-name=SegVolContextP
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --time=00:59:00
+#SBATCH --time=13:59:00
 #SBATCH --mem=120G
-#SBATCH --output=/home/scur0402/jobs/logs/SegVol-context-prior-balanced_%A.out
-#SBATCH --error=/home/scur0402/jobs/logs/SegVol-context-prior-balanced_%A.err
+#SBATCH --output=/home/scur0402/jobs/logs/SegVol-lora-amosctmri_%A.out
+#SBATCH --error=/home/scur0402/jobs/logs/SegVol-lora-amosctmri_%A.err
 
 date
 
@@ -24,8 +24,8 @@ source $WORK_DIR/.venv/bin/activate
 
 
 python -m adapt_med_seg.train \
-    --model_name "segvol_context_prior" \
-    --dataset_path /scratch-shared/scur0402/AMOS_2022 \
+    --model_name "segvol_lora" \
+    --dataset_path /scratch-shared/scur0402/AMOS_2022_unbalanced \
     --modalities CT MRI \
     --epochs 10 \
     --lora_r 16 \

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=LoRA-MRI-all
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=11:59:00
+#SBATCH --mem=32000M
+#SBATCH --output=/home/scur0402/jobs/logs/LoRA-MRI-all_%A.out
+
+date
+
+export HF_DATASETS_CACHE=/scratch-shared/scur0402/hf_cache_dir
+
+WORK_DIR=$HOME/zsombor/adapt_med_seg
+cd $WORK_DIR
+
+
+module purge
+module load 2023
+source $WORK_DIR/.venv/bin/activate
+
+# Danilo: 1h trainig job time went up to epoch 27
+python -m adapt_med_seg.train \
+    --model_name "segvol_lora" \
+    --dataset_path /scratch-shared/scur0402 \
+    --modalities MRI \
+    --epochs 5 \
+    --lora_r 16 \
+    --lora_alpha 16
