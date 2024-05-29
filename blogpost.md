@@ -30,7 +30,7 @@ In this section, we will briefly introduce the design and architecture of SegVol
 <table name='fig1' align="center">
   <tr align="center">
     <td>
-    	<img src="assets/SegVol.png" alt="SegVol" width=500px />
+    	<img src="assets/SegVol.png" alt="SegVol" width=700px />
   	</td>
   </tr>
   <tr align="left">
@@ -127,7 +127,7 @@ Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mi
 
 In this work, mainly due to time limitation, we only implement a *top-1 gated* mixture of two experts, one for each modality we consider. For the gating metchanism, we make use of the modality information to select an adapter at inference time. Concretely, we assume an identity adapter for CT data, and train a LoRA adapter for MRI data. During inference, we enable exactly one of these adapters to compute predictions.
 
-As a result, through this simple trick, we get no theoretical decrease in performance over the CT domain (note that the unchanged pre-trained weights are used), while improving significantly over the MRI domain. Please refer to the [Experimental Setup](#experimental_setup) and [Results](#results) sections for more details.
+As a result, through this simple trick, we get no theoretical decrease in performance over the CT domain (note that the unchanged pre-trained weights are used), while improving significantly over the MRI domain. Please refer to the [Experimental Setup](#experimental-setup) and [Results](#results) sections for more details.
 
 
 ### Context-prior learning
@@ -170,6 +170,17 @@ Finally, we introduce Context-prior pooling to the SegVol model, as described in
 In all our experiments, we compute the average Dice Similarity Coefficient (dice score) over the different modalities and tasks as well as the average dice score over all samples in the testing data. More precisely, the dice score is computed as follows:
 $$\text{dice}(X,Y)=\frac{2\vert X\cap Y\vert}{\vert X\vert + \vert Y\vert}$$
 where $\vert X\cup Y\vert$ denotes the cardinality of the intersection of the predicted masks $X$, and the ground truth $Y$. The denominator serves as a normalisation term.
+
+<table align="center" name="fig4">
+  <tr align="center">
+      <td><img src="./assets/dice_metric.png"></td>
+  </tr>
+  <tr align="left">
+    <td colspan="2"><b>Figure 4.</b> Illustration of the Dice score metric, showing the overlap between the predicted mask (<i>X</i>) and the ground truth mask (<i>Y</i>).</td>
+  </tr>
+</table>
+
+illustrates the application of the Dice score metric, demonstrating the overlap between the predicted and ground truth masks.
 
 ## Results
 
