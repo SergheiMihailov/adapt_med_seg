@@ -70,7 +70,7 @@ def parse_arguments():
     parser.add_argument("--lora_alpha", type=int, default=8)
     parser.add_argument("--lora_dropout", type=float, default=0.0)
     parser.add_argument("--target_modules", type=str, default=None, nargs="*")
-    parser.add_argument("--log_dir", type=str, default=None)
+    parser.add_argument("--log_dir", type=str, default="logs")
     parser.add_argument("--log_every_n_steps", type=int, default=50) # high default to avoid spamming
     parser.add_argument("--wandb_project", type=str, default="dl2_g33")
     parser.add_argument("--lr", "--learning_rate", type=float, default=5e-5)
