@@ -243,7 +243,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
       <img src="./assets/results_400_ct.jpeg" width=400px>
     </td>
     <td>
-      <img src="./assets/results_400_ct.jpeg" width=400px>
+      <img src="./assets/results_400_mri.jpeg" width=400px>
     </td>
   </tr>
   <tr align="left">
