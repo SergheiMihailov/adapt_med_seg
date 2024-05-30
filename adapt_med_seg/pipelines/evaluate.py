@@ -261,6 +261,12 @@ class EvaluatePipeline:
             },
             "per_dataset_modality_task_counts": per_dataset_modality_task_counts,
         }
+        if self._log_dir is not None:
+            try:
+                with open(f"{self._log_dir}/results_final.json", "w") as f:
+                    json.dump(results, indent=4)
+            except Exception as e:
+                logger.error(f"Failed to write results to log dir: {e}")
         if self._use_wandb:
             wandb.log(
                 {

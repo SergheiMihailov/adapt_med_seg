@@ -62,13 +62,16 @@ chaos_cls_intervals = {
 }
 
 
-def chaos_image_loader(path):
+def chaos_image_loader(path, is_ct: bool=False):
     img_loader = Compose(
         [LoadImage(), EnsureChannelFirst(channel_dim="no_channel"), ToNumpy()]
     )
     img = img_loader(path)
     # transpose along the 2nd and 3rd axis
     img = np.transpose(img, (0, 2, 1, 3))
+    if is_ct: # strangest thing
+        # invert the last axis
+        img = img[..., ::-1]
     return img
 
 
@@ -124,7 +127,7 @@ def parse_chaos(
         image_path = os.path.join(ct_data_root, idx, "DICOM_anon")
         label_path = os.path.join(ct_data_root, idx, "Ground")
         # construct loaders
-        image_load = load_callback(chaos_image_loader, image_path)
+        image_load = load_callback(chaos_image_loader, **{'path': image_path, 'is_ct': True})
         label_load = load_callback(
             chaos_label_loader, **{"path": label_path, "is_ct": True}
         )
