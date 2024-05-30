@@ -12,7 +12,7 @@ This repository contains a reproduction and extension of ["SegVol: Universal and
 
 To read the full report containing detailed information on our  experiments and extension study, please, refer to our [blogpost](blogpost.md).
 
-## Requirements
+## Installing Requirements
 
 To get started, clone the repository and install the dependencies using [Poetry](https://python-poetry.org/).
 
@@ -79,29 +79,37 @@ datasets/
 
 ```
 
+## How to use
 
+### Saved checkpoints
 
-## Setting Up the Pipelines
+We have trained threee configurations from the base
 
 ### Training Pipeline
 
-The training pipeline is defined in `adapt_med_seg/train.py`. To run the training script, follow these steps:
+The training pipeline is defined in `adapt_med_seg/train.py`. To train the model, run:
 
-1. Run the training script:
-
-    ```bash
-    python adapt_med_seg/train.py
-    ```
+```bash
+python -m adapt_med_seg.train \
+      --model_name "segvol_baseline" \
+      --dataset_path ${DATASET} \
+      --modalities CT MRI \
+      --epochs 10 \
+      --lora_r 16 \     # Optional: sets the rank of the LoRA adapter.
+      --lora_alpha 16   # Optional: sets the alpha value for the LoRA adapter.
+```
 
 ### Evaluation Pipeline
 
-The evaluation pipeline is defined in `adapt_med_seg/eval.py` and `adapt_med_seg/pipelines/evaluate.py`. To evaluate the model, follow these steps:`
+The evaluation pipeline is defined in `adapt_med_seg/pipelines/evaluate.py`. To evaluate the model, run:
 
-1. Run the evaluation script:
 
-    ```bash
-    python adapt_med_seg/eval.py
-    ```
+```bash
+python -m adapt_med_seg.eval \
+      --model_name "segvol_baseline" \
+      --dataset_path ${DATASET} \
+      --modalities CT MRI \
+```
 
 ## Notebooks
 
@@ -123,12 +131,5 @@ jupyter notebook
 ```
 
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-Feel free to adjust any of the sections according to your specific requirements and add any additional information that might be relevant.
 
 
