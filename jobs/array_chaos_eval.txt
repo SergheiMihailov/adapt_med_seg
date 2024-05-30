@@ -1,0 +1,1 @@
+--dataset_path /scratch-shared/scur0402_eval/CHAOS --modalities CT MRI

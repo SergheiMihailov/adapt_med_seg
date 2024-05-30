@@ -2,12 +2,12 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=chaos_ours
+#SBATCH --job-name=lora-prostate
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:10:00
 #SBATCH --mem=8G
-#SBATCH --array=1-1%1
+#SBATCH --array=1-9%8
 #SBATCH --output=/home/scur0402/jobs/logs/chaos_%A_%a.out
 
 date
@@ -18,9 +18,9 @@ WORK_DIR=$HOME/Miki/adapt_med_seg
 ENVDIR=$WORK_DIR/.venv/bin/activate
 cd $WORK_DIR
 
-JOB_FILE=$WORK_DIR/jobs/segvol_ct_inference.job
-ARRAY_FILE=$WORK_DIR/jobs/array_chaos_eval.txt
-OUTPUT_DIR=$WORK_DIR/outputs/chaos_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+JOB_FILE=$WORK_DIR/jobs/segvol_lora_prostate.job
+ARRAY_FILE=$WORK_DIR/jobs/array_lora_prostate.txt
+OUTPUT_DIR=$WORK_DIR/outputs/lora_prostate_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 mkdir -p $OUTPUT_DIR
 
 rsync $JOB_FILE $OUTPUT_DIR/
@@ -32,6 +32,7 @@ source $ENVDIR
 
 python -m adapt_med_seg.eval \
         --log_dir $OUTPUT_DIR \
-    	--model_name segvol_baseline \
 	--log_every_n_steps 4 \
+	--max_test_samples 16 \
+	--use_wandb \
        	$(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)

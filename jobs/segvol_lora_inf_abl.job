@@ -7,8 +7,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:59:00
 #SBATCH --mem=16G
-#SBATCH --array=1-18%8
-#SBATCH --output=/home/scur0402/jobs/logs/SegVol_abl_400_%A_%a.out
+#SBATCH --array=1-9%8
+#SBATCH --output=/home/scur0402/jobs/logs/lora_abl_400_%A_%a.out
 
 date
 
@@ -18,9 +18,9 @@ WORK_DIR=$HOME/Miki/adapt_med_seg
 ENVDIR=$WORK_DIR/.venv/bin/activate
 cd $WORK_DIR
 
-JOB_FILE=$WORK_DIR/jobs/segvol_ct_ablations.job
-ARRAY_FILE=$WORK_DIR/jobs/array_m3d_ablations.txt
-OUTPUT_DIR=$WORK_DIR/outputs/400_abl${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
+JOB_FILE=$WORK_DIR/jobs/segvol_lora_inf_abl.job
+ARRAY_FILE=$WORK_DIR/jobs/array_lora_400_ablations.txt
+OUTPUT_DIR=$WORK_DIR/outputs/lora_abl_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
 mkdir -p $OUTPUT_DIR
 
 rsync $JOB_FILE $OUTPUT_DIR/
@@ -33,5 +33,6 @@ source $ENVDIR
 
 python -m adapt_med_seg.eval \
     --max_test_samples 8 \
+    --log_dir $OUTPUT_DIR \
     --use_wandb \
     $(awk NR==$SLURM_ARRAY_TASK_ID $ARRAY_FILE)
