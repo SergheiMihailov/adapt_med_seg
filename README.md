@@ -131,6 +131,7 @@ Several Jupyter notebooks are provided for various tasks such as preprocessing, 
 - `notebooks/SegVol_initial_tryouts.ipynb`: Initial segmentation volume tryouts.
 - `notebooks/vis.ipynb`: Visualization of results.
 - `notebooks/zsombor_balance_amos.py`: Script for balancing AMOS dataset.
+- [Training notebook](https://colab.research.google.com/drive/1qxhdcgjt_ez7syjsubQvJjffpCeaZ6Fa?usp=sharing): Colab notebook for running model training.
 
 To run these notebooks, activate the Poetry environment and start Jupyter Notebook:
 
