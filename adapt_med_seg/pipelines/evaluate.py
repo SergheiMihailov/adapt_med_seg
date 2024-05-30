@@ -87,7 +87,7 @@ class EvaluatePipeline:
         if self._checkpoint_path:
             # tasks = list(self._dataset.labels.values()) # this will bug out checkpoint loading if the eval dataset doesnt have a category that the training had
             # instead read from the hparams.yaml
-            data = yaml.safe_load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(self._checkpoint_path))),"hparams.yaml")))
+            data = yaml.safe_load(open(os.path.join(os.path.dirname(os.path.dirname(self._checkpoint_path)),"hparams.yaml")))
             tasks = data['tasks']
             self._model = SegVolLightning.load_from_checkpoint(self._checkpoint_path, self.model_name, self._modalities, tasks, True, **kwargs)
             self._model.eval()  
