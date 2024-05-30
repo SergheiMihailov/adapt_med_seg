@@ -199,7 +199,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 |                           | MRI (all)                                 | Expected to perform better than LoRA on MRI            | TBD                                 |
 |                           | MRI Prostate                              | Potential improvement over LoRA on MRI prostate        | TBD                                 |
 |                           | MRI Brain                                 | Potential improvement over LoRA on MRI brain           | TBD                                 | -->
-|              | Modality   |   Prostate |   Enhancing tumor |   Non-contrast-enhancing tumor core |      Edema |   Right kidney |    Liver |      Arota |   Left adrenal gland |   Pancreas |
+|              | Modality   |   Prostate |   Enhancing tumor |   Non-contrast-enhancing tumor core |      Edema |   Right kidney |    Liver |      Aorta |   Left adrenal gland |   Pancreas |
 |:-------------|:----------|-----------:|------------------:|------------------------------------:|-----------:|---------------:|---------:|-----------:|---------------------:|-----------:|
 | Baseline     | CT        |            |                   |                                     |            |                | 0.949756 |            |                      |   0.751137 |
 | Baseline     | MRI       |   0.382315 |          0.236381 |                            0.154182 |   0.405408 |       0.904191 | 0.725064 |   0.899949 |             0.485659 |   0.671785 |
@@ -275,9 +275,13 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 ## Discussion and Conclusion
 
-Our study aimed to enhance the SegVol model's performance on MRI data using Low-Rank Adaptation (LoRA), Mixture of Adapters (MoA), and Context-prior learning. Preliminary experiments established a robust baseline for the SegVol model across CT scans. The application of LoRA was evaluated to determine its impact on MRI segmentation. Through experimentation we found that [x]. Aditionally, to mitigate potential performance degradation on CT, a binary gated mixture of adapters was implemented. This contributed to [x]. Furthermore, integrating Context-prior learning aimed to dynamically adapt the model to various imaging modalities and tasks resulting in [x]. 
+We enhance SegVol's performance on MRI data using Low-Rank Adaptation (LoRA), Mixture of Adapters (MoA), and Context-prior learning. Preliminary experiments establish a robust baseline for the SegVol model across CT scans. The application of LoRA adapters significantly improves the base performance of SegVol on MRI data while maintaining strong performance on CT data.  
 
-Detailed performance metrics are summarized in [Table 2](#tab2). Here we see that our method [x] as compared to the SegVol baseline. With regards to the performance of the model on different organs we can see from [Table 3](#tab3) that [x]
+Furthermore, to mitigate potential performance degradation on CT, a binary gated mixture of adapters was implemented. This method effectively "disables" the weights learned during fine-tuning, allowing the model to recover the baseline performance. 
+
+Finally, we introduce Context-prior learning to the SegVol model, allowing it to dynamically adapt to different imaging modalities and tasks. The self-attention mechanism of the model is conditioned on the task and modality, improving the model's overall accuracy on many of the selected tasks. 
+
+<!-- Detailed performance metrics are summarized in [Table 2](#tab2). Here we see that our method [x] as compared to the SegVol baseline. With regards to the performance of the model on different organs we can see from [Table 3](#tab3) that [x] -->
 
 
 
