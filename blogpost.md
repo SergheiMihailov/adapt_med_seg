@@ -181,9 +181,10 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 |                           | MRI (all)                                 | Expected to perform better than LoRA on MRI            | TBD                                 |
 |                           | MRI Prostate                              | Potential improvement over LoRA on MRI prostate        | TBD                                 |
 |                           | MRI Brain                                 | Potential improvement over LoRA on MRI brain           | TBD                                 | -->
+
 |              | Modality   |   Prostate |   Enhancing tumor |   Non-contrast-enhancing tumor core |      Edema |   Right kidney |    Liver |      Aorta |   Left adrenal gland |   Pancreas |
 |:-------------|:----------|-----------:|------------------:|------------------------------------:|-----------:|---------------:|---------:|-----------:|---------------------:|-----------:|
-| Baseline     | CT        |            |                   |                                     |            |                | 0.949756 |            |                      |   0.751137 |
+| Baseline     | CT        |            |                   |                                     |            |  | 0.949756 |            |                      |   0.751137 |
 | Baseline     | MRI       |   0.382315 |          0.236381 |                            0.154182 |   0.405408 |       0.904191 | 0.725064 |   0.899949 |             0.485659 |   0.671785 |
 | LoRA         | CT        |            |                   |                                     |            |                | 0.958793 |            |                      |   0.77236  |
 | LoRA         | MRI       |   0.768038 |          0.343241 |                                     |            |       0.904617 | 0.93647  |   0.839851 |             0.618322 |   0.735085 |
@@ -208,35 +209,10 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 <tr>
 <td colspan="4"><b>Table 2.</b> Internal Validation Results of LoRA and Context Priors on MRI and CT Datasets.
 </tr></table>
-
 *Note: The results are presented as mean Dice scores.*
 
-<!-- <center>
-
-| **Organ**                  | **SegVol Baseline (MRI + CT)** | **LoRA (MRI + CT)**       | **Context Priors (MRI + CT)** | **Results** |
-|----------------------------|--------------------------------|---------------------------|-------------------------------|-------------|
-| **Prostate**               | TBD                            | TBD                       | TBD                           | TBD         |
-| **Brain**                  | TBD                            | TBD                       | TBD                           | TBD         |
-| **Liver**                  | TBD                            | TBD                       | TBD                           | TBD         |
 
 
-| **Model**                  | **Modality** | **Organ**       |  **Results** |
-|----------------------------|--------------------------------|---------------------------|-------------------------------|
-| **BaseLine**               | CT                            | Prostate                       |                            |
-| **LoRA**               | MRI                            | Prostate                       |                            |
-|                | CT                            | Liver                       |                            |
-| **Prior**                  | MRI                            | TBD                       |                            |
-|                   | CT                            | TBD                       |                            | 
-
-
-
-</center>
-<table name='tab3'>
-<tr>
-<td colspan="4"><b>Table 3.</b> Dice Scores for Different Organs Using SegVol Baseline, LoRA, and Context Priors.
-</tr></table> -->
-
-<!-- *Note: The results are presented as mean Dice scores.* -->
 
 ### Performance of SegEVOLution
 <table align="center">
@@ -252,6 +228,23 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
     <td colspan="2"><b>Figure 4.</b> Combined view of the results.</td>
   </tr>
 </table>
+## Ablation studies
+
+As we mentioned in [earlier](#overview_of_segvol), at test time of SegVol, the bounding boxes were generated from the ground truth labels. As a result, we wanted to quantify the impact of small perturbations to the bounding boxes would ental on the overall performance of the model. Futhermore, Du et al. (2024) [[1]](#ref1) show ablation studies on different combinations of propmt types, namely text, point and bounding box promts. In our initial experiments, we observed some deviation from the reported results in the case of text-only prompts and prompts involving bounding boxes. Figure [[5]](#fig5) shows our results.
+
+<table align="center">
+  <tr align="center">
+    <td>
+      <img src="./assets/prompt_type_performance.png" width=400px>
+    </td>
+    <td>
+      <img src="./assets/bbox_performance.png" width=400px>
+    </td>
+  </tr>
+  <tr align="left">
+    <td colspan="2"><b>Figure 5.</b> Performance of different models on different promtp types (left) and performance of the same models on different perturbations of the bounding boxes. All models were evaluated on a subset of our multi-modal training data, so the baseline performance is expected to be less than the fine-tuned models. Regardless, we can see that the fine-tuned models are more robust to different prompt types and also over bounding box perturbations.</td>
+  </tr>
+</table>
 
 
 
@@ -263,13 +256,7 @@ Furthermore, to mitigate potential performance degradation on CT, a binary gated
 
 Finally, we introduce Context-prior learning to the SegVol model, allowing it to dynamically adapt to different imaging modalities and tasks. The self-attention mechanism of the model is conditioned on the task and modality, improving the model's overall accuracy on many of the selected tasks. 
 
-<!-- Detailed performance metrics are summarized in [Table 2](#tab2). Here we see that our method [x] as compared to the SegVol baseline. With regards to the performance of the model on different organs we can see from [Table 3](#tab3) that [x] -->
-
-
-
-
-
-
+Overall, we observe a significant improvement over the MRI domain for both approaches and we also see that most of the original model's performance is preserved over the CT domain. We further hypothesize, that our results are sub-optimal due to a lack of diversity in the training data and its magnitude. In future work, we aim to address these limitations by collecting and processing much larger quantities of training samples.
 
 ## Invidual Contributions
 
@@ -392,3 +379,5 @@ Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mi
 
 - **Performance guarantees**: adapters can be designed in a way such that the base model's pre-trained weights are never changed, so recovering the original model's performance is equivalent to disabling the adapters during inference. To do this, we can introduce an "identity adapter" into our mixture.
 - **Running time benefits**: modern PEFT methods can be applied very efficiently, at almost no additional cost at inference time [[13]](#ref13). Top-1 pooling can also be done in constant time, depending on the selection method we use.
+
+In this work, we only considered a trivial case of this approach, effectively disabling the LoRA adapters to recover the pre-trained weights of the SegVol model. Through this simple trick, we can ensure that fine-tuning does not decrease the model's performance over the original target distribution, while simultaneously enabling better performance over the new target distribution. We leave the development of more sophisticated MoA architectures to future work.
