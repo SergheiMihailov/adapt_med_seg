@@ -2,14 +2,7 @@
 
 ### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta 
 
-<table align="center" name="fig3">
-  <tr align="center">
-      <td><img src="./assets/adapt_med_seg.png"></td>
-  </tr>
-  <tr align="left">
-    <!-- <td colspan="2"><b>Figure 3.</b> Proposed architecture combining SegVol model and Hermes context-prior framework. This hybrid model integrates SegVol’s volumetric segmentation with Hermes’s context-prior learning.</td> -->
-  </tr>
-</table>
+<img src="./assets/adapt_med_seg.png"></td>
 
 **Keywords**: 3D medical SAM, volumetric image segmentation, LoRA, Context-Prior Learning
 
@@ -45,9 +38,47 @@ This will activate the primary environment with all necessary dependencies for t
 
 ## Datasets Involved 
 
-This project used the [M3D-Seg](https://huggingface.co/datasets/GoodBaiBai88/M3D-Seg) dataset. This dataset was trained  
+This project uses the [M3D-Seg](https://arxiv.org/html/2404.00578v1) dataset, which contains 25 datasets involving various medical imaging modalities such as CT of different anatomical structures. The 25 processed datasets are being uploaded to [ModelScope](https://www.modelscope.cn/datasets/GoodBaiBai88/M3D-Seg/summary) and [HuggingFace](https://huggingface.co/datasets/GoodBaiBai88/M3D-Seg).
+ Additionally,  we augment this dataset with the following datasets:
 
-To donwload the dataset 
+
+| Dataset        | Modality | Link                                                                                     |
+|----------------|----------|------------------------------------------------------------------------------------------|
+| AMOS_2022      | CT, MRI  | [https://amos22.grand-challenge.org/](https://amos22.grand-challenge.org/)               |
+| BRATS2021      | MRI      | [https://www.med.upenn.edu/cbica/brats2021/](https://www.med.upenn.edu/cbica/brats2021/) |
+| CHAOS          | CT, MRI  | [https://chaos.grand-challenge.org/](https://chaos.grand-challenge.org/)                 |
+| MSD            | CT, MRI  | [http://medicaldecathlon.com/](http://medicaldecathlon.com/)                             |
+| SAML_mr_42     | MRI      | [https://kaggle.com/datasets/nguyenhoainam27/saml-mr-42](https://kaggle.com/datasets/nguyenhoainam27/saml-mr-42)         |
+| T2-weighted-MRI| MRI      | [https://kaggle.com/datasets/nguyenhoainam27/t2-weighted-mri](https://kaggle.com/datasets/nguyenhoainam27/t2-weighted-mri) |
+| promise12_mr   | MRI      | [https://promise12.grand-challenge.org/](https://promise12.grand-challenge.org/)         |
+
+Due to resources constraints, the collection of datasets are split into different sizes for a manegeable training. These subdatasets were then used in our training process and can be downloaded from:
+
+| Dataset Size (Num. Samples) | Download Link                                                                                           |
+|-------------------|---------------------------------------------------------------------------------------------------------|
+| 200               | [Download](https://drive.google.com/file/d/16-WiqBWDaqDUVR8jXJS0ytWou4pic3ly/view?usp=sharing)           |
+| 400               | [Download](https://drive.google.com/file/d/19DPk0ZUpr_7md0qcIFpSOJXWoR889q-2/view?usp=sharing)           |
+| 800               | [Download](https://drive.google.com/file/d/1VYGv10CHD8gVZ7gRInjbStDH7fji8vq-/view?usp=sharing)           |
+
+Each of these datasets contain the following structure 
+
+
+```yaml
+datasets/
+├── 200/
+├── 400/
+└── 800/
+    ├── M3D_Seg/
+    ├── AMOS_2022/
+    ├── BRATS2021/
+    ├── CHAOS/
+    ├── MSD/
+    ├── SAML_mr_42/
+    ├── T2-weighted-MRI/
+    └── promise12_mr/
+
+```
+
 
 
 ## Setting Up the Pipelines
