@@ -57,7 +57,7 @@ The SegVol model takes inspiration from the Segment Anything Model (SAM) [[1]](#
 
 **Zoom-out-zoom-in mechanism**:  Given that 3D medical images typically have very high resolution[^1], and naively down-sampling them would cause significant information loss, the authors of SegVol employ a so-called zoom-out-zoom-in mechanism to reduce the memory overhead at inference time. Their method is simple: given an input image and a bbox or point prompt, they produce two inputs to the model; one, which is a downsampled version of the input (zoom-out) and another which is a full resolution but cropped using the provided prompt (zoom-in). This way, instead of having to compute image representations for the whole input, the model can first produce a local representation of the part deemed relevant by the provided prompt, and another, which helps put this representation in the context of the whole image. As a result, the computation overhead significantly decreases[^2].
 
-Albeit the obvious benefits of this method, it is important to note that at test time, it is our understanding that the bounding box prompts were generated from the ground truth labels, which makes the zoom-in images always *perfectly aligned* with the target organ. This may indeed leak ground-truth information to the model at inference time and obstruct the reported test results. To investigate this, we performed some preliminary experiments by applying random translations to the generated bounding box prompts, and found that the performance indeed decreases significantly. For more details, please refer to the [Results](#results) section.
+Despite the obvious benefits of this method, it is important to note that at test time, it is our understanding that the bounding box prompts were generated from the ground truth labels, which makes the zoom-in images always *perfectly aligned* with the target organ. This may indeed leak ground-truth information to the model at inference time and obstruct the reported test results. To investigate this, we performed some preliminary experiments by applying random translations to the generated bounding box prompts, and found that the performance indeed decreases significantly. For more details, please refer to the [Results](#results) section. 
 
 **Training**:  The SegVol model was trained in two phases; *pre-training* and *fine-tuning*. First, the ViT was pre-trained on a large training corpus, consisting of $96\, 000$ unlabelled volumetric CT images. During this phase, the SimMIM algorithm [[22]](#ref22) was used to obtain a weak supervision signal and guide the image encoder to map to a feature-rich embedding space, tailored specifically for the task of image segmentation. Next, once the pre-training of the ViT concluded, the authors employed supervised fine-tuning of the entire model on a set of $6\, 000$ labelled CT images, including $150\,000$ ground truth segmentation masks, from the M3D-Seg dataset [[33]](#ref33)(see the [next section](#datasets)).
 
@@ -259,7 +259,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
       <img src="./assets/results_400_ct.jpeg" width=400px>
     </td>
     <td>
-      <img src="./assets/results_400_mri.jpeg" width=400px>
+      <img src="./assets/results_400_mri.png" width=400px>
     </td>
   </tr>
   <tr align="left">
