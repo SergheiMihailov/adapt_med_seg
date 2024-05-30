@@ -371,6 +371,8 @@ Toward Universal Medical Image Segmentation.”
 
 <a name='ref35'>[35]</a>: Dan Biderman, Jose Gonzalez Ortiz, Jacob Portes, Mansheej Paul, Philip Greengard, Connor Jennings, Daniel King, Sam Havens, Vitaliy Chiley, Jonathan Frankle, Cody Blakeney, and John P. Cunningham. 2024. "LoRA Learns Less and Forgets Less." [arXiv:2405.09673](https://arxiv.org/abs/2405.09673)
 
+<a name='ref36'>[36]</a>: Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. 2013. "Efficient Estimation of Word Representations in Vector Space." [arXiv:1301.3781](https://arxiv.org/abs/1301.3781)
+
 
 ### Appendix A: MRI leakage in M3D-Seg
 
@@ -385,3 +387,21 @@ Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mi
 - **Running time benefits**: modern PEFT methods can be applied very efficiently, at almost no additional cost at inference time [[13]](#ref13). Top-1 pooling can also be done in constant time, depending on the selection method we use.
 
 In this work, we only considered a trivial case of this approach, effectively disabling the LoRA adapters to recover the pre-trained weights of the SegVol model. Through this simple trick, we can ensure that fine-tuning does not decrease the model's performance over the original target distribution, while simultaneously enabling better performance over the new target distribution. We leave the development of more sophisticated MoA architectures to future work.
+
+### Appendix C: Interpreting context-prior tokens for tasks
+Context-prior tokens are learnable per task and modality. Whereas we only conduct experiments on 2 modalities, we train our model on 21 tasks, corresponding to different organs from the 400 dataset. To understand how context-priors help leverage similarities between tasks, we performed a t-SNE visualization of the context-prior tokens ([Figure 4](#fig4)):
+
+<table name='fig1' align="center">
+  <tr align="center">
+    <td>
+    	<img src="assets/task-prior-t-SNE.png" alt="task prior t-SNE" width=700px />
+  	</td>
+  </tr>
+  <tr align="left">
+    <td>
+    	<b>Figure 4</b>: Task Prior Embeddings t-SNE plot
+  	</td>
+  </tr>
+</table>
+
+We observe that the resulting embeddings reflect, to some degree, the anatomical proximity of the respective organs. For instance right/left kidney and adrenal gland are plotted near each other, brain tumors form a cluster in the bottom of the plot. Additionally, inspired by word2vec [[36]](#ref36) we expected a high cosine similarity between `left_adrenal_gland - right_adrenal_gland + right_kidney` and `left_kidney` embeddings. However, the result amounted to -0.11. Thus, the interpretation of the context-prior token semantics remain subject for future work.
