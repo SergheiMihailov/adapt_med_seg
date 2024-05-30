@@ -145,7 +145,7 @@ Earlier in this work, we briefly introduced the SegVol model, and proposed two d
 
 2. We fine-tuned the SegVol model using LoRA adapters [[13]](#ref13) on our selection of CT and MRI data shown in [Table 1](#tab1). In our expectation, this method would adapt the model to the MRI domain and out-perform the baseline in all our tests. On the other hand, we also expect its performance to decrease over the original (CT) domain of the base model, as is a common phenomenon in fine-tuning methods and also a known phenomenon when using Low-rank adaptation [[35]](#ref35).
 
-3. To overcome the performance drop of the LoRA-adapted model, we introduce Context-prior pooling to the SegVol model, as described in length in the [previous section](#context_prior_learning). We train it on a diverse set of both MRI and CT volumes (as listed in [Table 1][#tab1]).
+3. To overcome the performance drop of the LoRA-adapted model, we introduce Context-prior pooling to the SegVol model, as described in length in the [previous section](#context_prior_learning). We train it on a diverse set of both MRI and CT volumes (as listed in [Table 1](#tab1).
 
 ### Evaluation metrics
 
