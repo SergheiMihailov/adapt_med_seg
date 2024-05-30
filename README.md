@@ -1,6 +1,6 @@
 # SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning
 
-### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta 
+### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta, S. Achlatis
 
 <img src="./assets/adapt_med_seg.png"></td>
 
@@ -8,7 +8,8 @@
 
 ---
 
-This repository contains a reproduction and extension of ["SegVol: Universal and Interactive Volumetric Medical Image Segmentation"](https://arxiv.org/abs/2311.13385) by Du et al. (2023). 
+This repository contains a reproduction and extension of ["SegVol: Universal and Interactive Volumetric Medical Image Segmentation"](https://arxiv.org/abs/2311.13385) by Du et al. (2023)
+using [LoRA adapters](https://arxiv.org/abs/2106.09685) and context priors introduced in ["Training Like a Medical Resident: Context-Prior Learning Toward Universal Medical Image Segmentation"](https://arxiv.org/abs/2306.02416) by Gao et al. (2023)
 
 To read the full report containing detailed information on our  experiments and extension study, please, refer to our [blogpost](blogpost.md).
 
