@@ -1,6 +1,6 @@
 # SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning
 
-### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta 
+### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta, S. Achlatis
 
 <img src="./assets/adapt_med_seg.png"></td>
 
@@ -8,7 +8,8 @@
 
 ---
 
-This repository contains a reproduction and extension of ["SegVol: Universal and Interactive Volumetric Medical Image Segmentation"](https://arxiv.org/abs/2311.13385) by Du et al. (2023). 
+This repository contains a reproduction and extension of ["SegVol: Universal and Interactive Volumetric Medical Image Segmentation"](https://arxiv.org/abs/2311.13385) by Du et al. (2023)
+using [LoRA adapters](https://arxiv.org/abs/2106.09685) and context priors introduced in ["Training Like a Medical Resident: Context-Prior Learning Toward Universal Medical Image Segmentation"](https://arxiv.org/abs/2306.02416) by Gao et al. (2023)
 
 To read the full report containing detailed information on our  experiments and extension study, please, refer to our [blogpost](blogpost.md).
 
@@ -52,7 +53,7 @@ This project uses the [M3D-Seg](https://arxiv.org/html/2404.00578v1) dataset, wh
 | T2-weighted-MRI| MRI      | [https://kaggle.com/datasets/nguyenhoainam27/t2-weighted-mri](https://kaggle.com/datasets/nguyenhoainam27/t2-weighted-mri) |
 | promise12_mr   | MRI      | [https://promise12.grand-challenge.org/](https://promise12.grand-challenge.org/)         |
 
-Due to resources constraints, the collection of datasets are split into different sizes for a manegeable training. These subdatasets were then used in our training process and can be downloaded from:
+Due to resources constraints, the subsamples of the above datasets are used for training and evaluation. These subdatasets were sampled by taking one random image from the first dataset, then from the second etc. until (200,400,800) reached, or there was no more unique sample in the specific dataset.
 
 | Dataset Size (Num. Samples) | Download Link                                                                                           |
 |-------------------|---------------------------------------------------------------------------------------------------------|
@@ -65,25 +66,27 @@ Each of these datasets contain the following structure
 
 ```yaml
 datasets/
-├── 200/
-├── 400/
-└── 800/
-    ├── M3D_Seg/
-    ├── AMOS_2022/
-    ├── BRATS2021/
-    ├── CHAOS/
-    ├── MSD/
-    ├── SAML_mr_42/
-    ├── T2-weighted-MRI/
-    └── promise12_mr/
-
+├── M3D_Seg/
+├── AMOS_2022/
+├── BRATS2021/
+├── CHAOS/
+├── MSD/
+├── SAML_mr_42/
+├── T2-weighted-MRI/
+└── promise12_mr/
 ```
 
 ## How to use
 
 ### Saved checkpoints
 
-We have trained threee configurations from the base
+We have trained two configurations on top of the SegVol model. These checkpoints, along with the base model from the SegVol paper, can be found below:
+
+|   Model name  | Dice score(%)       |  Download Checkpoint     |
+| :--:     | :--:          |:--:               | 
+|   segvol_baseline  | TBD |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true) | 
+|   segvol_lora  | TBD |  [Download](https://drive.google.com/file/d/)   | 
+|   segvol_context_prior  | TBD  |  [Download](https://drive.google.com/file/d/) |
 
 ### Training Pipeline
 
@@ -91,7 +94,7 @@ The training pipeline is defined in `adapt_med_seg/train.py`. To train the model
 
 ```bash
 python -m adapt_med_seg.train \
-      --model_name "segvol_baseline" \
+      --model_name ${MODEL_NAME} \ # i.e "segvol_baseline"
       --dataset_path ${DATASET} \
       --modalities CT MRI \
       --epochs 10 \
@@ -106,12 +109,18 @@ The evaluation pipeline is defined in `adapt_med_seg/pipelines/evaluate.py`. To 
 
 ```bash
 python -m adapt_med_seg.eval \
-      --model_name "segvol_baseline" \
+      --model_name ${MODEL_NAME} \ # i.e "segvol_baseline"
       --dataset_path ${DATASET} \
       --modalities CT MRI \
+      --ckpt_path ${CHECKPOINT_PATH} \ i.e "segvol_lora.ckpt"
+      --lora_r 16 \ # Optional but need to match the training lora_r of the checkpoint: sets the rank of the LoRA adapter.
+      --lora_alpha 16 \ # Optional but need to match the training lora_rof the checkpoint: sets the alpha value for the LoRA adapter.
 ```
 
-## Notebooks
+## Demo
+This section provides an overview of the available Jupyter notebooks designed to help you with various tasks such as preprocessing data, performing inference, and visualizing results.
+
+### Notebooks
 
 Several Jupyter notebooks are provided for various tasks such as preprocessing, inference, and visualization:
 
@@ -129,6 +138,47 @@ To run these notebooks, activate the Poetry environment and start Jupyter Notebo
 poetry shell
 jupyter notebook
 ```
+## 🏆 Performance of SegEVOLution using our pre-trained models
+
+<table align="center">
+  <tr align="center">
+    <td>
+      <img src="./assets/results_400_ct.jpeg" width=400px>
+    </td>
+    <td>
+      <img src="./assets/results_400_mri.jpeg" width=400px>
+    </td>
+  </tr>
+  <tr align="left">
+    <td colspan="2"><b>Figure 4.</b> Combined view of our results over different modalities and organs.</td>
+  </tr>
+</table>
+
+
+## Citation
+If you find this repository helpful, please consider citing:
+
+```
+@misc{SegEVOLution2024,
+    title = {SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning},
+    author = {Zsombor, Fülöp and Serghei, Mihailov and Matey, Krastev and Miklos, Hamar and Danilo, Toapanta, Stefanos, Achlatis},
+    year = {2024},
+    howpublished = {\url{https://github.com/SergheiMihailov/adapt_med_seg.git}},
+}
+```
+
+## Acknowledgement
+
+Thanks for the following amazing works:
+[SegVol](https://github.com/BAAI-DCAI/SegVol)
+
+[HuggingFace](https://huggingface.co/).
+
+[CLIP](https://github.com/openai/CLIP).
+
+[MONAI](https://github.com/Project-MONAI/MONAI).
+
+[Zenodo](https://zenodo.org/).
 
 
 
