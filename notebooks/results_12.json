@@ -1,0 +1,35 @@
+{
+    "12": {
+        "dice": 0.20720261335372925,
+        "per_dataset_modality_task_dice": {
+            "chaos_mrct_42_1": {
+                "CT": {
+                    "spleen": 0.0,
+                    "right kidney": 0.0,
+                    "Liver": 0.9635717272758484
+                },
+                "MRI": {
+                    "Left kidney": 0.0011326860403642058,
+                    "Liver": 0.3263172209262848,
+                    "right kidney": 0.022401869297027588,
+                    "spleen": 0.05140715837478638
+                }
+            }
+        },
+        "per_dataset_modality_task_counts": {
+            "chaos_mrct_42_1": {
+                "CT": {
+                    "spleen": 1,
+                    "right kidney": 1,
+                    "Liver": 1
+                },
+                "MRI": {
+                    "Left kidney": 2,
+                    "Liver": 5,
+                    "right kidney": 2,
+                    "spleen": 1
+                }
+            }
+        }
+    }
+}
