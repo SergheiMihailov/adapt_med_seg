@@ -84,9 +84,11 @@ We have trained two configurations on top of the SegVol model. These checkpoints
 
 |   Model name  | Dice score(%)       |  Download Checkpoint     |
 | :--:     | :--:          |:--:               | 
-|   segvol_baseline  | TBD |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true) | 
-|   segvol_lora  | TBD |  [Download](https://drive.google.com/file/d/)   | 
-|   segvol_context_prior  | TBD  |  [Download](https://drive.google.com/file/d/) |
+|   segvol_baseline  | 0.7069[^1] |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true) | 
+|   segvol_lora  | 0.6470 |  [Download](https://drive.google.com/file/d/1SkrwoVMvcwxv-vZU0zI0uCrstYepVG_w/view?usp=drive_link)   | 
+|   segvol_context_prior  | 0.6651  |  [Download](https://drive.google.com/file/d/161-6lNR0eoKKIku5RwpqfZ6Vtwgs68g6/view?usp=drive_link) |
+
+[^1]: CT only, our measurement
 
 ### Training Pipeline
 
