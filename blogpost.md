@@ -265,7 +265,7 @@ Overall, we observe a significant improvement over the MRI domain for both appro
 | **Name**       | **Contribution**                                                                                   |
 |----------------|-----------------------------------------------------------------------------------------------------|
 | Z. Fülöp       | Literature review, initial experiments with SegVol, training and evaluation, report |
-| S. Mihailov    | Literature review, context-prior implementation, training, report |
+| S. Mihailov    | Literature review, context-prior approach and implementation, backbone and initial evaluation pipeline, training, report |
 | M. Krastev     | Literature review, implementation of the backbone of the project and training, visualizations, report |
 | M. Hamar       | Literature review, preprocessing datasets, evaluations, visualizations, report |
 | D.A. Toapanta  | Literature review, implementation of LoRA-based approach, training, report |
