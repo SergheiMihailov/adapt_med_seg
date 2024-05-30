@@ -65,25 +65,28 @@ Each of these datasets contain the following structure
 
 ```yaml
 datasets/
-├── 200/
-├── 400/
-└── 800/
-    ├── M3D_Seg/
-    ├── AMOS_2022/
-    ├── BRATS2021/
-    ├── CHAOS/
-    ├── MSD/
-    ├── SAML_mr_42/
-    ├── T2-weighted-MRI/
-    └── promise12_mr/
-
+├── M3D_Seg/
+├── AMOS_2022/
+├── BRATS2021/
+├── CHAOS/
+├── MSD/
+├── SAML_mr_42/
+├── T2-weighted-MRI/
+└── promise12_mr/
 ```
 
 ## How to use
 
 ### Saved checkpoints
 
-We have trained threee configurations from the base
+We have trained two configurations on top of the SegVol model. These checkpoints, along with the base model from the SegVol paper, can be found below:
+
+|   Model name  | Dice score(%)       |  Download Checkpoint     |
+| :--:     | :--:          |:--:               | 
+|   segvol_baseline  | 67.12 |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true)
+ | 
+|   segvol_lora  | 67.12 |  [Download](https://drive.google.com/file/d/)   | 
+|   segvol_context_prior  | 79.10  |  [Download](https://drive.google.com/file/d/) |
 
 ### Training Pipeline
 
@@ -91,7 +94,7 @@ The training pipeline is defined in `adapt_med_seg/train.py`. To train the model
 
 ```bash
 python -m adapt_med_seg.train \
-      --model_name "segvol_baseline" \
+      --model_name ${MODEL_NAME} \ # i.e "segvol_baseline"
       --dataset_path ${DATASET} \
       --modalities CT MRI \
       --epochs 10 \
@@ -106,7 +109,7 @@ The evaluation pipeline is defined in `adapt_med_seg/pipelines/evaluate.py`. To 
 
 ```bash
 python -m adapt_med_seg.eval \
-      --model_name "segvol_baseline" \
+      --model_name ${MODEL_NAME} \ # i.e "segvol_baseline"
       --dataset_path ${DATASET} \
       --modalities CT MRI \
 ```
