@@ -200,7 +200,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 <table name='tab2'>
 <tr>
-<td colspan="4"><b>Table 2.</b> External Validation Results of LoRA and Context Priors on MRI and CT Datasets.
+<td colspan="4"><b>Table 2.</b> Internal Validation Results of LoRA and Context Priors on MRI and CT Datasets.
 </tr></table>
 
 *Note: The results are presented as mean Dice scores.*
