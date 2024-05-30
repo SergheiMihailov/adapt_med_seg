@@ -80,7 +80,7 @@ Here we note, that we discovered that M3D-Seg mistakenly also incorporates in to
 
 ### Magnetic Resonance Imaging Data
 
-To successfully train our models to recognise MRI data, we selected $6$ different publicly available datasets, which consist of $1\,572$ MRI volumes and $12\,486$ ground truth segmentation masks. Please refer to [Table 1](#tab1) for an overview of the datasets we have used. We pre-process each of these samples in the same way as M3D-Seg but also include a per-sample modality information. For example, the CHAOS [[24]](#ref24) dataset contains both CT and MRI data, so it is important to be able to distinguish between them in our dataset representation. 
+To successfully train our models to recognise MRI data, we selected $6$ different publicly available datasets, which consist of $1\,682$ MRI volumes and over $12\,000$ ground truth segmentation masks. Please refer to [Table 1](#tab1) for an overview of the datasets we have used. We pre-process each of these samples in the same way as M3D-Seg but also include a per-sample modality information. For example, the CHAOS [[24]](#ref24) dataset contains both CT and MRI data, so it is important to be able to distinguish between them in our dataset representation. 
 
 <center>
 
