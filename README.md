@@ -52,7 +52,7 @@ This project uses the [M3D-Seg](https://arxiv.org/html/2404.00578v1) dataset, wh
 | T2-weighted-MRI| MRI      | [https://kaggle.com/datasets/nguyenhoainam27/t2-weighted-mri](https://kaggle.com/datasets/nguyenhoainam27/t2-weighted-mri) |
 | promise12_mr   | MRI      | [https://promise12.grand-challenge.org/](https://promise12.grand-challenge.org/)         |
 
-Due to resources constraints, the collection of datasets are split into different sizes for a manegeable training. These subdatasets were then used in our training process and can be downloaded from:
+Due to resources constraints, the subsamples of the above datasets are used for training and evaluation. These subdatasets were sampled by taking one random image from the first dataset, then from the second etc. until (200,400,800) reached, or there was no more unique sample in the specific dataset.
 
 | Dataset Size (Num. Samples) | Download Link                                                                                           |
 |-------------------|---------------------------------------------------------------------------------------------------------|
@@ -83,9 +83,9 @@ We have trained two configurations on top of the SegVol model. These checkpoints
 
 |   Model name  | Dice score(%)       |  Download Checkpoint     |
 | :--:     | :--:          |:--:               | 
-|   segvol_baseline  | 67.12 |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true) | 
-|   segvol_lora  | 67.12 |  [Download](https://drive.google.com/file/d/)   | 
-|   segvol_context_prior  | 79.10  |  [Download](https://drive.google.com/file/d/) |
+|   segvol_baseline  | TBD |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true) | 
+|   segvol_lora  | TBD |  [Download](https://drive.google.com/file/d/)   | 
+|   segvol_context_prior  | TBD  |  [Download](https://drive.google.com/file/d/) |
 
 ### Training Pipeline
 
@@ -111,6 +111,9 @@ python -m adapt_med_seg.eval \
       --model_name ${MODEL_NAME} \ # i.e "segvol_baseline"
       --dataset_path ${DATASET} \
       --modalities CT MRI \
+      --ckpt_path ${CHECKPOINT_PATH} \ i.e "segvol_lora.ckpt"
+      --lora_r 16 \ # Optional but need to match the training lora_r of the checkpoint: sets the rank of the LoRA adapter.
+      --lora_alpha 16 \ # Optional but need to match the training lora_rof the checkpoint: sets the alpha value for the LoRA adapter.
 ```
 
 ## Demo
@@ -134,7 +137,7 @@ To run these notebooks, activate the Poetry environment and start Jupyter Notebo
 poetry shell
 jupyter notebook
 ```
-## 🏆 Performance of SegVOLution using our pre-trained models
+## 🏆 Performance of SegEVOLution using our pre-trained models
 
 <table align="center">
   <tr align="center">
@@ -157,14 +160,16 @@ If you find this repository helpful, please consider citing:
 ```
 @misc{SegEVOLution2024,
     title = {SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning},
-    author = {Zsombor, Fülöp and Serghei, Mihailov and Matey, Krastev and Miklos, Hamar and Danilo, Toapanta},
+    author = {Zsombor, Fülöp and Serghei, Mihailov and Matey, Krastev and Miklos, Hamar and Danilo, Toapanta, Stefanos, Achlatis},
     year = {2024},
     howpublished = {\url{https://github.com/SergheiMihailov/adapt_med_seg.git}},
 }
 ```
 
 ## Acknowledgement
+
 Thanks for the following amazing works:
+[SegVol](https://github.com/BAAI-DCAI/SegVol)
 
 [HuggingFace](https://huggingface.co/).
 
