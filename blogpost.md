@@ -137,9 +137,6 @@ We apply the approach taken by Hermes to the pre-trained SegVol model, with slig
     <td colspan="2"><b>Figure 2.</b> Proposed architecture combining SegVol model and Hermes context-prior framework. This hybrid model integrates SegVol’s volumetric segmentation with Hermes’s context-prior learning.</td>
   </tr>
 </table>
-## Experimental Setup
-
-Earlier in this work, we briefly introduced the SegVol model, and proposed two different adaptation methods. In this and the results sections, we will discuss our approach to evaluating their performance and show our findings. Our experimental setup can be decomposed into three separte parts. 
 
 ## Experimental Setup
 
