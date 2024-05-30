@@ -52,6 +52,8 @@ def load_all_image_mask(data_idx, mypath, prefix, theirpath):
     print("my_paths", my_paths)
     print("their_paths", their_paths)
     for my_path, their_path in zip(my_paths, their_paths):
+        if my_path.endswith(".json"):
+            continue
         my_image, my_mask, their_image, their_mask = load_image_mask(
             my_path, their_path
         )
