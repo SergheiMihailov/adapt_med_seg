@@ -254,13 +254,11 @@ As we mentioned in the [overview of SegVol](#overview_of_segvol), at test time, 
 
 ## Discussion and Conclusion
 
-We enhance SegVol's performance on MRI data using Low-Rank Adaptation (LoRA), Mixture of Adapters (MoA), and Context-prior learning. Preliminary experiments establish a robust baseline for the SegVol model across CT scans. The application of LoRA adapters significantly improves the base performance of SegVol on MRI data while maintaining strong performance on CT data.  
+We enhance SegVol's performance on MRI data using Low-Rank Adaptation (LoRA), and Context-prior learning. Preliminary experiments establish a robust baseline for the SegVol model across CT scans. The application of LoRA adapters significantly improves the base performance of SegVol on MRI data while maintaining strong performance on CT data, even slightly improving on colon cancer.   
 
-Furthermore, to mitigate potential performance degradation on CT, a binary gated mixture of adapters was implemented. This method effectively "disables" the weights learned during fine-tuning, allowing the model to recover the baseline performance. 
+We introduce Context-prior learning to the SegVol model, allowing it to dynamically adapt to different imaging modalities and tasks. The self-attention mechanism of the model is conditioned on the task and modality, improving the model's overall accuracy on many of the selected tasks. 
 
-Finally, we introduce Context-prior learning to the SegVol model, allowing it to dynamically adapt to different imaging modalities and tasks. The self-attention mechanism of the model is conditioned on the task and modality, improving the model's overall accuracy on many of the selected tasks. 
-
-Overall, we observe a significant improvement over the MRI domain for both approaches and we also see that most of the original model's performance is preserved over the CT domain. We further hypothesize, that our results are sub-optimal due to a lack of diversity in the training data and its magnitude. In future work, we aim to address these limitations by collecting and processing much larger quantities of training samples.
+Overall, we observe a significant improvement over the MRI domain for both approaches and we also see that most of the original model's performance is preserved over the CT domain. We further hypothesize, that our results are sub-optimal due to a lack of diversity in the training data and its magnitude. In future work, we aim to address these limitations by collecting and processing much larger quantities of training samples, and also evaluate on external out-of-distribution testing datasets.
 
 ## Invidual Contributions
 
