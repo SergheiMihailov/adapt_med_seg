@@ -275,7 +275,7 @@ Finally, we introduce Context-prior learning to the SegVol model, allowing it to
 
 | **Name**       | **Contribution**                                                                                   |
 |----------------|-----------------------------------------------------------------------------------------------------|
-| Z. Fülöp       | Literature review, initial experiments with SegVol, implementation of evaluation, training and evaluation, report |
+| Z. Fülöp       | Literature review, initial experiments with SegVol, training and evaluation, report |
 | S. Mihailov    | Literature review, context-prior implementation, training, report |
 | M. Krastev     | Literature review, implementation of the backbone of the project and training, visualizations, report |
 | M. Hamar       | Literature review, preprocessing datasets, evaluations, visualizations, report |
