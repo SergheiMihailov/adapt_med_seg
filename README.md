@@ -83,8 +83,7 @@ We have trained two configurations on top of the SegVol model. These checkpoints
 
 |   Model name  | Dice score(%)       |  Download Checkpoint     |
 | :--:     | :--:          |:--:               | 
-|   segvol_baseline  | 67.12 |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true)
- | 
+|   segvol_baseline  | 67.12 |   [Download](https://huggingface.co/BAAI/SegVol/resolve/main/vit_pretrain.ckpt?download=true) | 
 |   segvol_lora  | 67.12 |  [Download](https://drive.google.com/file/d/)   | 
 |   segvol_context_prior  | 79.10  |  [Download](https://drive.google.com/file/d/) |
 
@@ -114,7 +113,10 @@ python -m adapt_med_seg.eval \
       --modalities CT MRI \
 ```
 
-## Notebooks
+## Demo
+This section provides an overview of the available Jupyter notebooks designed to help you with various tasks such as preprocessing data, performing inference, and visualizing results.
+
+### Notebooks
 
 Several Jupyter notebooks are provided for various tasks such as preprocessing, inference, and visualization:
 
@@ -132,6 +134,45 @@ To run these notebooks, activate the Poetry environment and start Jupyter Notebo
 poetry shell
 jupyter notebook
 ```
+## 🏆 Performance of SegVOLution using our pre-trained models
+
+<table align="center">
+  <tr align="center">
+    <td>
+      <img src="./assets/results_400_ct.jpeg" width=400px>
+    </td>
+    <td>
+      <img src="./assets/results_400_mri.jpeg" width=400px>
+    </td>
+  </tr>
+  <tr align="left">
+    <td colspan="2"><b>Figure 4.</b> Combined view of our results over different modalities and organs.</td>
+  </tr>
+</table>
+
+
+## Citation
+If you find this repository helpful, please consider citing:
+
+```
+@misc{SegEVOLution2024,
+    title = {SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning},
+    author = {Zsombor, Fülöp and Serghei, Mihailov and Matey, Krastev and Miklos, Hamar and Danilo, Toapanta},
+    year = {2024},
+    howpublished = {\url{https://github.com/SergheiMihailov/adapt_med_seg.git}},
+}
+```
+
+## Acknowledgement
+Thanks for the following amazing works:
+
+[HuggingFace](https://huggingface.co/).
+
+[CLIP](https://github.com/openai/CLIP).
+
+[MONAI](https://github.com/Project-MONAI/MONAI).
+
+[Zenodo](https://zenodo.org/).
 
 
 
