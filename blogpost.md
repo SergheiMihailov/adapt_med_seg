@@ -186,7 +186,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 <center>
 
-| **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                          |
+<!-- | **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                          |
 |---------------------------|-------------------------------------------|--------------------------------------------------------|-------------------------------------|
 | **SegVol Baseline**       | MRI + CT (all)                            | Baseline performance for comparison                    | 0.729                            |
 | **LoRA**                  | MRI + CT (all)                            | Baseline performance for comparison                                  | TBD                                 |
@@ -198,7 +198,27 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 |         | CT (all)                                  | Expected to perform better than LoRA on CT             | TBD                                 |
 |                           | MRI (all)                                 | Expected to perform better than LoRA on MRI            | TBD                                 |
 |                           | MRI Prostate                              | Potential improvement over LoRA on MRI prostate        | TBD                                 |
-|                           | MRI Brain                                 | Potential improvement over LoRA on MRI brain           | TBD                                 |
+|                           | MRI Brain                                 | Potential improvement over LoRA on MRI brain           | TBD                                 | -->
+|              | Modality   |   Prostate |   Enhancing tumor |   Non-contrast-enhancing tumor core |      Edema |   Right kidney |    Liver |      Arota |   Left adrenal gland |   Pancreas |
+|:-------------|:----------|-----------:|------------------:|------------------------------------:|-----------:|---------------:|---------:|-----------:|---------------------:|-----------:|
+| Baseline     | CT        |            |                   |                                     |            |                | 0.949756 |            |                      |   0.751137 |
+| Baseline     | MRI       |   0.382315 |          0.236381 |                            0.154182 |   0.405408 |       0.904191 | 0.725064 |   0.899949 |             0.485659 |   0.671785 |
+| LoRA         | CT        |            |                   |                                     |            |                | 0.958793 |            |                      |   0.77236  |
+| LoRA         | MRI       |   0.768038 |          0.343241 |                                     |            |       0.904617 | 0.93647  |   0.839851 |             0.618322 |   0.735085 |
+| SegVol-Prior | CT        |            |                   |                                     |            |                | 0.958149 |            |                      |   0.765545 |
+| SegVol-Prior | MRI       |   0.797154 |          0.473366 |                                     |   0.282421 |       0.903139 | 0.936724 |   0.892555 |             0.58574  |   0.756111 |
+
+
+
+|              | Modality   |   Gall bladder |    Stomach |   Duodenum |   Left kidney |   Postcava |   Spleen |   Right adrenal gland |   Colon cancer |     Tumour |
+|:-------------|:----------|---------------:|-----------:|-----------:|--------------:|-----------:|---------:|----------------------:|---------------:|-----------:|
+| Baseline     | CT        |                |            |            |               |            | 0.964386 |                       |       0.517814 |   0.560809 |
+| Baseline     | MRI       |       0.537233 |   0.707523 |   0.615844 |      0.781269 |   0.778236 | 0.775074 |              0.430416 |                |            |
+| LoRA         | CT        |                |            |            |               |            | 0.962802 |                       |       0.575204 |   0.567885 |
+| LoRA         | MRI       |       0.494653 |   0.817483 |   0.568297 |      0.871564 |   0.763725 | 0.92573  |              0.559679 |                |            |
+| SegVol-Prior | CT        |                |            |            |               |            | 0.962918 |                       |       0.678117 |   0.575005 |
+| SegVol-Prior | MRI       |       0.484843 |   0.829583 |   0.569049 |      0.876734 |   0.761132 | 0.770932 |              0.553968 |                |            |
+
 
 </center>
 
@@ -209,7 +229,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 *Note: The results are presented as mean Dice scores.*
 
-<center>
+<!-- <center>
 
 | **Organ**                  | **SegVol Baseline (MRI + CT)** | **LoRA (MRI + CT)**       | **Context Priors (MRI + CT)** | **Results** |
 |----------------------------|--------------------------------|---------------------------|-------------------------------|-------------|
@@ -232,9 +252,9 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 <table name='tab3'>
 <tr>
 <td colspan="4"><b>Table 3.</b> Dice Scores for Different Organs Using SegVol Baseline, LoRA, and Context Priors.
-</tr></table>
+</tr></table> -->
 
-*Note: The results are presented as mean Dice scores.*
+<!-- *Note: The results are presented as mean Dice scores.* -->
 
 ### Performance of SegVOLution
 <table align="center">
