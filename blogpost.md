@@ -7,19 +7,19 @@
 
 Medical image segmentation (MIS) is a major direction in computer vision which targets accurate delineation of anatomical structures -- crucial for diagnosis, treatment planning, and disease monitoring. The development of universal models that can perform well across different medical imaging modalities, in particular, is a challenging task. Firstly, because the modalities, notably Computed Tomography (CT), Magnetic Resonance Imaging (MRI), Endoscopy, and Ultrasound (US), each employ fundamentally different techniques. Secondly, each modality targets different parts and/or features of the human anatomy resulting in substantial variations in label space and data distribution. Thirdly, unlike conventional images, acquiring large-scale medical data is challenging due to the high costs of annotation and privacy concerns. This difficulty is exacerbated in the case of volumetric (3D) medical images, which are particularly hard to obtain, store, and annotate, and require significant computational resources for processing [[1]](#ref1). Consequently, developing a universal model that demonstrates robust and consistent performance across the entire MIS domain is exceptionally challenging.
 
-This study focuses on SegVol [[1]](#ref1), a foundation model designed for MIS and pre-trained on CT volumes. Notably, SegVol exhibits promising zero-shot performance on MRI data. Our objective is to evaluate the transferability of SegVol's CT pre-training to MRI data and extend its capabilities through fine-tuning techniques and enhanced prompt augmentation. Our approach comprises two main strategies: First, we quantitatively evaluate SegVol's performance under controlled input distribution shifts within the MRI modality. Second, we enhance SegVol's performance in the MRI domain by employing advanced prompts, parameter-efficient fine-tuning, and modality-specific priors. Additionally, we assess the impact of fine-tuning on SegVol's performance in the CT domain. Broadly, this work seeks to provide insights into the adaptability of MIS models across different medical imaging modalities.
+This study focuses on SegVol [[1]](#ref1), a foundation model designed for MIS and pre-trained on CT volumes. Notably, SegVol exhibits promising zero-shot performance on MRI data. Our objective is to evaluate the transferability of SegVol's CT pre-training to MRI data and extend its capabilities through fine-tuning techniques and enhanced prompt augmentation. Our approach comprises two main strategies: First, we quantitatively evaluate SegVol's performance under controlled input distribution shifts within the MRI modality. Second, we enhance SegVol's performance in the MRI domain by employing advanced prompts, parameter-efficient fine-tuning, and modality-, and task-specific priors. Additionally, we assess the impact of fine-tuning on SegVol's performance in the CT domain. Broadly, this work seeks to provide insights into the adaptability of MIS models across different medical imaging modalities.
 
 ## Background
 
 Recently, several large-scale models have been proposed to address the challenges of universality and robustness in image segmentation across both natural and medical domains. Notably, the Segment Anything Model (SAM) [[2]](#ref2) is a large pre-trained foundation model specifically designed for image segmentation, demonstrating impressive results on various tasks, including segmentation of out-of-distribution samples. However, subsequent studies have revealed that despite SAM’s exceptional performance on natural images, it significantly underperforms on most medical image segmentation (MIS) tasks, such as organ, tumor, and lesion segmentation across CT, MRI, and Ultrasound modalities [[3]](#ref3) [[4]](#ref4) [[5]](#ref5) [[6]](#ref6) [[7]](#ref7).
 
-To address these limitations, several new methods have been proposed to adapt SAM for improved performance on MIS tasks [[8]](#ref8) [[9]](#ref9) [[10]](#ref10). SAM-Med2D [[9]](#ref9) is a fine-tuned version of SAM trained on 19.7 million 2D masks from various body parts and imaging techniques. This version incorporates learnable adapter layers in each Transformer block, allowing the model to acquire domain-specific knowledge crucial for medical image segmentation. Spatial prompts such as point prompts, bounding box prompts, and mask prompts play crucial roles in guiding the model to specific regions of interest within medical images. Despite the adaptation, treating 3D images such as CT and MRI as independent 2D slices is suboptimal.
+To address these limitations, several new mmodels have been proposed to adapt SAM for improved performance on MIS tasks [[8]](#ref8) [[9]](#ref9) [[10]](#ref10). SAM-Med2D [[9]](#ref9) is a fine-tuned version of SAM trained on 19.7 million 2D masks from various body parts and imaging techniques. This version incorporates learnable adapter layers in each Transformer block, allowing the model to acquire domain-specific knowledge crucial for medical image segmentation. Spatial prompts such as point prompts, bounding box prompts, and mask prompts play crucial roles in guiding the model to specific regions of interest within medical images. Despite the adaptation, treating 3D images such as CT and MRI as independent 2D slices is suboptimal.
 
 Haoyu Wang et al. (2023) [[10]](#ref10) reformulated SAM into a 3D architecture, called SAM-Med3D, and trained it on 131,000 3D CT and MRI masks across 247 categories. Unlike SAM-Med2D, which treats volumetric data as individual 2D slices, SAM-Med3D processes the data in its entirety using a 3D decoder. This method allows SAM-Med3D to capture more spatial context and generate higher quality masks with significantly fewer point prompts compared to SAM-Med2D. However, SAM-Med3D still faces challenges in processing large inputs due to its volumetric design and does not support segmentation using semantic prompts.
 
-Most recently, Du et al. (2024) proposed SegVol [[1]](#ref1), a volumetric model pre-trained on 90,000 unlabelled, and fine-tuned on 6,000 labeled CT images from various segmentation datasets of over 200 anatomical structures. The authors claim that SegVol generalizes remarkably well to unseen data, achieving state-of-the-art zero-shot performance on most MIS tasks. SegVol employs composite-type prompts that combine semantic and spatial information, significantly enhancing its segmentation accuracy. Importantly, SegVol also supports semantic-only prompt which enables a wider range of applications. Additionally, the authors introduced a method for inference called zoom-in-zoom-out, which significantly reduces the computational cost of volumetric image segmentation while effectively utilizing the 3D structure's information. Despite SegVol being explicitly trained on CT images, it demonstrates good zero-shot performance in the MRI domain, underscoring its versatility.
+Most recently, Du et al. (2024) proposed SegVol [[1]](#ref1), a volumetric model pre-trained on 90,000 unlabelled, and fine-tuned on 6,000 labeled CT images from various segmentation datasets of over 200 anatomical structures. The authors claim that SegVol generalizes remarkably well to unseen data (external validation tasks), achieving state-of-the-art zero-shot performance on most MIS tasks. SegVol employs composite-type prompts that combine semantic and spatial information, significantly enhancing its segmentation accuracy. Importantly, SegVol also supports semantic-only prompt which enables a wider range of applications. Additionally, the authors introduced a method for inference called zoom-in-zoom-out, which significantly reduces the computational cost of volumetric image segmentation while effectively utilizing the 3D structure's information. Despite SegVol being explicitly trained on CT images, it demonstrates good zero-shot performance in the MRI domain, underscoring its versatility.
 
-To develop a truly universal medical image segmentation model, Gao et al. (2024) proposed Hermes [[11]](#ref11), which learns task- and modality-specific priors inspired by the training program of medical radiology residents. Hermes integrates these priors through context-aware sampling [[12]](#ref12) based on the input image's modality (e.g., MRI, CT, PET) and the task description. This approach allows Hermes to adapt dynamically to different segmentation challenges, offering a significant improvement over single-task models. Contextual prompts derived from the learned priors are used to adapt the model’s segmentation strategy dynamically. Hermes has been shown to be competitive with, or even outperform, state-of-the-art task- and modality-specific approaches across a wide range of benchmarks.
+To develop a truly universal medical image segmentation model, Gao et al. (2024) proposed Hermes [[11]](#ref11), which learns task- and modality-specific priors inspired by the training program of medical radiology residents. Hermes integrates these priors through context-aware sampling [[12]](#ref12) based on the input image's modality (e.g., MRI, CT, PET) and the task description (essentially just the name of the anatomical structure that we want to segment). This approach allows Hermes to adapt dynamically to different segmentation challenges, offering a significant improvement over single-task models. Contextual prompts derived from the learned priors are used to adapt the model’s segmentation strategy dynamically. Hermes has been shown to be competitive with, or even outperform, state-of-the-art task- and modality-specific approaches across a wide range of benchmarks.
 
 ## Overview of SegVol
 
@@ -46,20 +46,20 @@ The SegVol model takes inspiration from the Segment Anything Model (SAM) [[1]](#
 - **Prompt Encoder (PE)**: responsible for mapping different types of prompts to the same vector space as the output representations of the ViT. The supported prompt types are the following:
   - **Text prompt**: encodes semantic information about the task at hand. Given a task (e.g. liver segmentation), it uses the pre-trained text encoder of the CLIP model [[34]](#ref34), evaluated using the template 
 
-  		`A Computerized Tomography (CT) of a {} ` (e.g. liver)
+  		`A Computerized Tomography (CT) of a {ANATOMICAL_STRUCTURE} ` (e.g. liver)
   -  **Point prompt**: specify $n$ points within the organ to help guide the search of the model. Following CLIP, the model computes the positional encoding of these points
-  - **Bounding box prompt**: specify a 3D box around the target organ to help guide the search of the model. Again, the positional encodings of the corners of the bounding box are used.
+  - **Bounding box prompt**: specify a 3D box around the target organ to help guide the search of the model. The positional encodings of the corners of the bounding box are used.
 
 	Overall, the prompt encoder computes representations for each of the provided prompt types and concatenates them.
 
 - **Fusion Encoder**: a lightweight sequential application of two transformer blocks, applying bi-directional self-attention on the concatenated input of the image- and prompt embeddings computed by the earlier modules.
 - **Mask Decoder**: Based on the output of the fusion encoder, compute mask predictions using a Multi-Layer Perceptron (MLP) block. These predictions are then used in a standard sliding window inference to find the mask with highest *Intersection over Union (IoU)* score.
 
-**Zoom-out-zoom-in mechanism**:  Given that 3D medical images typically have very high resolution[^1], and naively down-sampling them would cause significant information loss, the authors of SegVol employ a so-called zoom-out-zoom-in mechanism to reduce the memory overhead at inference time. Their method is simple. Given an input image and a bbox or point prompt, they produce two inputs to the model; one, which is a downsampled version of the input (zoom-out) and another which is a full resolution but cropped using the provided prompt (zoom-in). This way, instead of having to compute image representations for the whole input, the model can first produce a local representation of the part deemed relevant by the provided prompt, and another, which helps put this representation in the context of the whole image. As a result, the computation overhead significantly decreases[^2].
+**Zoom-out-zoom-in mechanism**:  Given that 3D medical images typically have very high resolution[^1], and naively down-sampling them would cause significant information loss, the authors of SegVol employ a so-called zoom-out-zoom-in mechanism to reduce the memory overhead at inference time. Their method is simple: given an input image and a bbox or point prompt, they produce two inputs to the model; one, which is a downsampled version of the input (zoom-out) and another which is a full resolution but cropped using the provided prompt (zoom-in). This way, instead of having to compute image representations for the whole input, the model can first produce a local representation of the part deemed relevant by the provided prompt, and another, which helps put this representation in the context of the whole image. As a result, the computation overhead significantly decreases[^2].
 
 Albeit the obvious benefits of this method, it is important to note that at test time, it is our understanding that the bounding box prompts were generated from the ground truth labels, which makes the zoom-in images always *perfectly aligned* with the target organ. This may indeed leak ground-truth information to the model at inference time and obstruct the reported test results. To investigate this, we performed some preliminary experiments by applying random translations to the generated bounding box prompts, and found that the performance indeed decreases significantly. For more details, please refer to the [Results](#results) section.
 
-**Training**:  The SegVol model was trained in two phases; *pre-training* and *fine-tuning*. First, the ViT was pre-trained on a large training corpus, consisting of $96\, 000$ unlabelled volumetric CT images. During this phase, the SimMIM algorithm [[22]](#ref22) was used to obtain a weak supervision signal and guide the image encoder to map to a feature-ritch embedding space, tailored specifically for the task of image segmentation. Next, once the pre-training of the ViT concluded, the authors employed supervised fine-tuning of the entire model on a set of $6\, 000$ labelled CT images, including $150\,000$ ground truth segmentation masks, from the M3D-Seg dataset [[33]](#ref33)(see the [next section](#datasets)).
+**Training**:  The SegVol model was trained in two phases; *pre-training* and *fine-tuning*. First, the ViT was pre-trained on a large training corpus, consisting of $96\, 000$ unlabelled volumetric CT images. During this phase, the SimMIM algorithm [[22]](#ref22) was used to obtain a weak supervision signal and guide the image encoder to map to a feature-rich embedding space, tailored specifically for the task of image segmentation. Next, once the pre-training of the ViT concluded, the authors employed supervised fine-tuning of the entire model on a set of $6\, 000$ labelled CT images, including $150\,000$ ground truth segmentation masks, from the M3D-Seg dataset [[33]](#ref33)(see the [next section](#datasets)).
 
 Overall, the above architecture is a well-defined extension of the SAM architecture, adapted specifically for the task of volumetric medical image segmentation. While SAM was shown to perform poorly in the medical domain ([4](#ref4), [5](#ref5), [6](#ref6), [7](#ref7)), SegVol consistently out-performs other state-of-the-art methods. By employing zoom-out-zoom-in inference and also through its design, it is not infeasible to perform interactive segmentation in a low-resource environment, paving the way for medical practitioners to use it in their day-to-day activities.
 
@@ -72,19 +72,15 @@ In our work, we consider two *modalities* from the volumetric medical image segm
 
 ### Computed Tomography Data
 
-We reused the M3D-Seg dataset, used in the fine-tuning phase of the SegVol model [[1]](#ref1). It was released by [33](#ref33), and is currently one of the largest volumetric image segmentation datasets available[^3]. It consists of $5\,771$ CT images, along with $149\,000$ segmentation masks, from a total of $25$ publicly available datasets. The authors made an effort to standardize the data across a wide range of data quality, format and sample sizes. Interstingly, the preprocessing pipeline used is relatively simple compared to common practices in the medical image segmentation domain. 
+We reused the M3D-Seg dataset, used in the fine-tuning phase of the SegVol model [[1]](#ref1). It was released by [[33]](#ref33), and is currently one of the largest volumetric image segmentation datasets available[^3]. It consists of $5\,771$ CT images, along with $149\,000$ segmentation masks, from a total of $25$ publicly available datasets. The authors made an effort to standardize the data across a wide range of data quality, format and sample sizes. Interestingly, the preprocessing pipeline used is relatively simple compared to common practices in the medical image segmentation domain. 
 
-Concretely, given a raw volumetric image file (typically in [NIfTI format](https://en.wikipedia.org/wiki/Neuroimaging_Informatics_Technology_Initiative#:~:text=The%20Neuroimaging%20Informatics%20Technology%20Initiative,using%20Magnetic%20Resonance%20Imaging%20methods.)), they first extract the foreground of the image (all voxels of intensity $>$ mean intensity), take the resulting image's $5^\text{th}$ and $95^\text{th}$ percentile, and standardize it using the mean and std of the foreground. Next, for each dataset, they pre-process the ground truth segmentation masks by splitting the different segmentation categories along the first dimension and then concatenating them, to obtain a $K\times H\times W\times D$ tensor of segmentation masks. Finally, they store the resulting image and mask representations as numpy binaries encoded with floating point numbers with 32bit precision. The authors apply this procedure on each raw image sample from the $25$ different CT image datasets to obtain the M3D-Seg dataset [33](#33).
+Concretely, given a raw volumetric image file (typically in [DICOM format](https://en.wikipedia.org/wiki/DICOM) or semi-processed [NIfTI format](https://en.wikipedia.org/wiki/Neuroimaging_Informatics_Technology_Initiative#:~:text=The%20Neuroimaging%20Informatics%20Technology%20Initiative,using%20Magnetic%20Resonance%20Imaging%20methods.)), they first extract the foreground of the image (all voxels of intensity $>$ mean intensity), take the resulting image's $5^\text{th}$ and $95^\text{th}$ percentile, and standardize it using the mean and std of the foreground. Next, for each dataset, they pre-process the ground truth segmentation masks by splitting the different segmentation categories along the first dimension and then concatenating them, to obtain a $K\times H\times W\times D$ tensor of segmentation masks. Finally, they store the resulting image and mask representations as numpy binaries encoded with floating point numbers with 32bit precision.
 
-Here we note, that we discovered that M3D-Seg mistakenly also incorporates in total 32 MRI volumes from the AMOS dataset [27](#ref27). We investigated the cause of this and found that the original AMOS dataset has ambiguous metadata files. A more thourough explanation of it can be found in the Appendix. We estimate that 32 samples from 96,000 should not influence the model much so we consider as if it did not happen. 
+Here we note, that we discovered that M3D-Seg mistakenly also incorporates in total 32 MRI volumes from the AMOS dataset [[27]](#ref27). We investigated the cause of this and found that the original AMOS dataset has ambiguous metadata files. A more thourough explanation of it can be found in the Appendix. We estimate that 32 samples from 96,000 should not influence the model much so we consider as if it did not happen. 
 
 ### Magnetic Resonance Imaging Data
 
 To successfully train our models to recognise MRI data, we selected $6$ different publicly available datasets, which consist of $1\,572$ MRI volumes and $12\,486$ ground truth segmentation masks. Please refer to [Table 1](#tab1) for an overview of the datasets we have used. We pre-process each of these samples in the same way as M3D-Seg but also include a per-sample modality information. For example, the CHAOS [[24]](#ref24) dataset contains both CT and MRI data, so it is important to be able to distinguish between them in our dataset representation. 
-
-### Data loading
-
-To combine the two sources of data; the M3D-Seg dataset and our collection of MRI datasets, we use the same pre-processing logic and obtain a combined dataset, which we can use for training and evaluation of our models. In practice, noting that the available CT data is an order of magnitude larger than the MRI data we have obtained, we only select a specific subset of the M3D-Seg dataset. This way we get a balanced training and validation set over the two modalities.
 
 <center>
 
@@ -135,18 +131,18 @@ Medical imaging data is characteristically heterogeneous and diverse: different 
 
 Gao et. al 2024 [[11]](#ref11) explore the universal medical image segmentation paradigm. They propose integrating learnable per-modality and per-task tokens, called **context priors**, into existing MIS architectures. Context priors are used to adapt the image representation to the specified task and modality, essentially conditioning the segmentation. This is done by passing both the context prior tokens and the output of the image encoder through a transformer block, called **prior fusion**. The mask decoder will then use the adapted image representation, instead of the original one.
 
-Furthermore, the context priors, after being passed through the prior fusion block and interacting with the image representation, are called **posterior tokens**. Posterior tokens combine the information from context prior tokens and image representation via the prior fusion mechanism, and are used to generate **posterior prototypes**. The final segmentation output of the model is the inner product of the mask decoder output with the posterior prototypes, where posterior prototypes serve as class classifiers.
+Furthermore, the context priors, after being passed through the prior fusion block and interacting with the image representation, are called **posterior tokens**. Posterior tokens combine the information from context prior tokens and image representation via the prior fusion mechanism, and are used to generate **posterior prototypes**. The final segmentation output of the model is the inner product of the mask decoder output with the posterior prototypes, where posterior prototypes serve as class classifiers. For a deeper explanation of the context-prior method please see the original paper [[11]](#ref11).
 
-<table align="center" name="fig3">
+<table align="center" name="fig2">
   <tr align="center">
       <td><img src="./assets/adapt_med_seg.png"></td>
   </tr>
   <tr align="left">
-    <td colspan="2"><b>Figure 3.</b> Proposed architecture combining SegVol model and Hermes context-prior framework. This hybrid model integrates SegVol’s volumetric segmentation with Hermes’s context-prior learning.</td>
+    <td colspan="2"><b>Figure 2.</b> Proposed architecture combining SegVol model and Hermes context-prior framework. This hybrid model integrates SegVol’s volumetric segmentation with Hermes’s context-prior learning.</td>
   </tr>
 </table>
 
-We apply the approach taken by Hermes to the pre-trained SegVol model, with slight modifications, as described below. You can refer to the figure above for an overview.
+We apply the approach taken by Hermes to the pre-trained SegVol model, with slight modifications, as described below. You can refer to the [Figure 2](#fig2) above for an overview. We note that the authors have not released their code, so we implemented context-priors from their paper solely.
 - **Context prior pool.** Following the approach from the Hermes paper, we introduce a context prior pool. Whenever the model encounters a new modality or task (which are known in advance per dataset), a new context prior is added to the pool. 
 - **Prior fusion.** To adapt the image encoder output and obtain the posterior tokens, we introduce the prior fusion attention module. 
 - **Posterior prototype.** We use the posterior tokens obtained from prior fusion to adapt the mask decoder output. As opposed to Hermes, we use the posterior tokens as an additive adaptation to the mask decoder output tokens, rather than as a multiplicative adaptation over the feature map resulting from the mask decoder. We take this approach as we focus on single-class tasks, thus posterior prototypes as presented in the original paper would not be meaningful to our case.
@@ -155,15 +151,15 @@ We apply the approach taken by Hermes to the pre-trained SegVol model, with slig
 
 ## Experimental Setup
 
-Earlier in this work, we briefly introduced the SegVol model, and proposed three different adaptation methods. In this and the proceeding sections, we will discuss our approach to evaluating their performance and show our findings. Our experimental setup can be decomposed into four separte parts. 
+Earlier in this work, we briefly introduced the SegVol model, and proposed two different adaptation methods. In this and the results sections, we will discuss our approach to evaluating their performance and show our findings. Our experimental setup can be decomposed into four separte parts. 
 
-First, we conducted a series of experiments on the SegVol model, using its pre-trained weights. This way, on the one had gained valuable insights into the inner workings of the SegVol model, and on the other hand obtained baseline results to which we could compare our adaptation methods.
+1. We conducted a series of experiments on the SegVol model, using its original weights. This way, on the one hand, we gained valuable insights into the inner workings of the SegVol model, and on the other hand obtained baseline results to which we could compare our adaptation methods.
 
-Secondly, fine-tuned the SegVol model using LoRA adapters [[13]](#ref13) on our selection of MRI data shown in [Table 1](#tab1). In our expectation, this method would adapt the model to the MRI domain out-perform the baseline in all our tests. On the other hand, we also expect its performance to decrease over the original (CT) domain of the base model, as is a common phenomenon in fine-tuning methods and also a known phenomenon when using Low-rank adaptation [[35]](#ref35).
+2. We fine-tuned the SegVol model using LoRA adapters [[13]](#ref13) on our selection of MRI data shown in [Table 1](#tab1). In our expectation, this method would adapt the model to the MRI domain out-perform the baseline in all our tests. On the other hand, we also expect its performance to decrease over the original (CT) domain of the base model, as is a common phenomenon in fine-tuning methods and also a known phenomenon when using Low-rank adaptation [[35]](#ref35).
 
-Thirdly, to overcome the performance drop of the LoRA-adapted model, we employ a binary gated mixture of adapters mechanism (discussed in [this section](#mixture_of_adapters_moa)) which effectively "disables" the weigths of the model, which were learned during fine-tuning to recover the baseline performance of the SegVol model. This way, we get high performance on both the CT and MRI domains, at almost no extra computational cost.
+3. To overcome the performance drop of the LoRA-adapted model, we employ a binary gated mixture of adapters mechanism (discussed in [this section](#mixture_of_adapters_moa)) which effectively "disables" the weigths of the model, which were learned during fine-tuning to recover the baseline performance of the SegVol model. This way, we get high performance on both the CT and MRI domains, at almost no extra computational cost.
 
-Finally, we introduce Context-prior pooling to the SegVol model, as described in length in the [previous section](#context_prior_learning). We train it on a diverse set of both MRI and CT volumes (as listed in [Table 1][#tab1]).
+4. We introduce Context-prior pooling to the SegVol model, as described in length in the [previous section](#context_prior_learning). We train it on a diverse set of both MRI and CT volumes (as listed in [Table 1][#tab1]).
 
 ### Evaluation metrics
 
@@ -171,12 +167,12 @@ In all our experiments, we compute the average Dice Similarity Coefficient (dice
 $$\text{dice}(X,Y)=\frac{2\vert X\cap Y\vert}{\vert X\vert + \vert Y\vert}$$
 where $\vert X\cup Y\vert$ denotes the cardinality of the intersection of the predicted masks $X$, and the ground truth $Y$. The denominator serves as a normalisation term.
 
-<table align="center" name="fig4">
+<table align="center" name="fig3">
   <tr align="center">
       <td><img src="./assets/dice_metric.png" width=600px></td>
   </tr>
   <tr align="left">
-    <td colspan="2"><b>Figure 4.</b> Illustration of the Dice score metric, showing the overlap between the ground truth mask (<i>Y</i>) and the predicted mask (<i>X</i>).</td>
+    <td colspan="2"><b>Figure 3.</b> Illustration of the Dice score metric, showing the overlap between the ground truth mask (<i>Y</i>) and the predicted mask (<i>X</i>).</td>
   </tr>
 </table>
 
@@ -236,7 +232,7 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 
 *Note: The results are presented as mean Dice scores.*
 
-### Performance of SegVOLution
+### Performance of SegEVOLution
 <table align="center">
   <tr align="center">
     <td>
@@ -269,11 +265,11 @@ Detailed performance metrics are summarized in [Table 2](#tab2). Here we see tha
 
 | **Name**       | **Contribution**                                                                                   |
 |----------------|-----------------------------------------------------------------------------------------------------|
-| Z. Fülöp       |  |
-| S. Mihailov    |  |
-| M. Krastev     |  |
-| M. Hamar       |  |
-| D.A. Toapanta  |  |
+| Z. Fülöp       | Literature review, initial experiments with SegVol, implementation of evaluation, training and evaluation, report |
+| S. Mihailov    | Literature review, context-prior implementation, training, report |
+| M. Krastev     | Literature review, implementation of the backbone of the project and training, visualizations, report |
+| M. Hamar       | Literature review, preprocessing datasets, evaluations, visualizations, report |
+| D.A. Toapanta  | Literature review, implementation of LoRA-based approach, training, report |
 
 ## References
 
