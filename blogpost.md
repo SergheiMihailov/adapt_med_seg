@@ -1,4 +1,4 @@
-# SegEVOLution: Enhanced Medical Image Segmentation with Multimodality Learning
+# SegEVOLution: Towards Universal Fine-tuning for Medical Image Segmentation with Context-Prior Learning
 
 ### Z. Fülöp, S. Mihailov, M. Krastev, M. Hamar, D.A. Toapanta 
 > **Supervised by**: Stefanos Achlatis, s.s.achlatis@uva.nl
@@ -164,9 +164,6 @@ where $\vert X\cup Y\vert$ denotes the cardinality of the intersection of the pr
 </table>
 
 ## Results
-
-Based on preliminary evaluation, we have reproduced SegVol performance on CT and MRI data, obtaining results as reporting in the SegVol paper.
-
 <center>
 
 <!-- | **Method**       | **Training Data**                         | **Expected Outcome**                                    | **Results**                          |
@@ -256,9 +253,9 @@ As we mentioned in the [overview of SegVol](#overview_of_segvol), at test time, 
 
 We enhance SegVol's performance on MRI data using Low-Rank Adaptation (LoRA), and Context-prior learning. Preliminary experiments establish a robust baseline for the SegVol model across CT scans. The application of LoRA adapters significantly improves the base performance of SegVol on MRI data while maintaining strong performance on CT data, even slightly improving on colon cancer.   
 
-We introduce Context-prior learning to the SegVol model, allowing it to dynamically adapt to different imaging modalities and tasks. The self-attention mechanism of the model is conditioned on the task and modality, improving the model's overall accuracy on many of the selected tasks. 
+We introduce Context-prior learning to the SegVol model. Beyond semantic prompting, we introduce additional conditioning on task and modality, by fusing the image representation with the context-prior tokens and adapting mask decoder output tokens. The resulting model maintains performance on the CT domain and shows large improvements on the out-of-distribution MRI modality, while fine-tuned on only 400 samples.
 
-Overall, we observe a significant improvement over the MRI domain for both approaches and we also see that most of the original model's performance is preserved over the CT domain. We further hypothesize, that our results are sub-optimal due to a lack of diversity in the training data and its magnitude. In future work, we aim to address these limitations by collecting and processing much larger quantities of training samples, and also evaluate on external out-of-distribution testing datasets.
+These promising results show opportunity for future work on increasing the diversity and size of the training data, to fully exploit the potential of context-priors. A limitation of our approach is that we do not conduct extensive ablations on the architecture, primarily following the Hermes approach. Further architecture search and ablation studies, as well as application to other models, can provide insights into what makes context-prior learning effective in the medical image segmentation setting.
 
 ## Invidual Contributions
 
@@ -386,7 +383,7 @@ Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mi
 
 In this work, we only considered a trivial case of this approach, effectively disabling the LoRA adapters to recover the pre-trained weights of the SegVol model. Through this simple trick, we can ensure that fine-tuning does not decrease the model's performance over the original target distribution, while simultaneously enabling better performance over the new target distribution. We leave the development of more sophisticated MoA architectures to future work.
 
-### Appendix C: Interpreting context-prior tokens for tasks
+### Appendix C: Interpreting context-prior tokens for tasks 
 Context-prior tokens are learnable per task and modality. Whereas we only conduct experiments on 2 modalities, we train our model on 21 tasks, corresponding to different organs from the 400 dataset. To understand how context-priors help leverage similarities between tasks, we performed a t-SNE visualization of the context-prior tokens ([Figure 4](#fig4)):
 
 <table name='fig1' align="center">
