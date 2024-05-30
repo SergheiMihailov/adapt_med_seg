@@ -215,6 +215,18 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 |----------------------------|--------------------------------|---------------------------|-------------------------------|-------------|
 | **Prostate**               | TBD                            | TBD                       | TBD                           | TBD         |
 | **Brain**                  | TBD                            | TBD                       | TBD                           | TBD         |
+| **Liver**                  | TBD                            | TBD                       | TBD                           | TBD         |
+
+
+| **Model**                  | **Modality** | **Organ**       |  **Results** |
+|----------------------------|--------------------------------|---------------------------|-------------------------------|
+| **BaseLine**               | CT                            | Prostate                       |                            |
+| **LoRA**               | MRI                            | Prostate                       |                            |
+|                | CT                            | Liver                       |                            |
+| **Prior**                  | MRI                            | TBD                       |                            |
+|                   | CT                            | TBD                       |                            | 
+
+
 
 </center>
 <table name='tab3'>
@@ -223,6 +235,21 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
 </tr></table>
 
 *Note: The results are presented as mean Dice scores.*
+
+### Performance of SegVOLution
+<table align="center">
+  <tr align="center">
+    <td>
+      <img src="./assets/results_400_ct.jpeg" width=400px>
+    </td>
+    <td>
+      <img src="./assets/results_400_ct.jpeg" width=400px>
+    </td>
+  </tr>
+  <tr align="left">
+    <td colspan="2"><b>Figure 4.</b> Combined view of the results.</td>
+  </tr>
+</table>
 
 
 
