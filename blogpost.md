@@ -76,7 +76,7 @@ We reused the M3D-Seg dataset, used in the fine-tuning phase of the SegVol model
 
 Concretely, given a raw volumetric image file (typically in [DICOM format](https://en.wikipedia.org/wiki/DICOM) or semi-processed [NIfTI format](https://en.wikipedia.org/wiki/Neuroimaging_Informatics_Technology_Initiative#:~:text=The%20Neuroimaging%20Informatics%20Technology%20Initiative,using%20Magnetic%20Resonance%20Imaging%20methods.)), they first extract the foreground of the image (all voxels of intensity $>$ mean intensity), take the resulting image's $5^\text{th}$ and $95^\text{th}$ percentile, and standardize it using the mean and std of the foreground. Next, for each dataset, they pre-process the ground truth segmentation masks by splitting the different segmentation categories along the first dimension and then concatenating them, to obtain a $K\times H\times W\times D$ tensor of segmentation masks. Finally, they store the resulting image and mask representations as numpy binaries encoded with floating point numbers with 32bit precision.
 
-Here we note, that we discovered that M3D-Seg mistakenly also incorporates in total 32 MRI volumes from the AMOS dataset [[27]](#ref27). We investigated the cause of this and found that the original AMOS dataset has ambiguous metadata files. A more thourough explanation of it can be found in the Appendix. We estimate that 32 samples from 96,000 should not influence the model much so we consider as if it did not happen. 
+Here we note, that we discovered that M3D-Seg mistakenly also incorporates in total 32 MRI volumes from the AMOS dataset [[27]](#ref27). We investigated the cause of this and found that the original AMOS dataset has ambiguous metadata files. A more thourough explanation of it can be found in the Appendix A. We estimate that 32 samples from 96,000 should not influence the model much so we consider as if it did not happen. 
 
 ### Magnetic Resonance Imaging Data
 
@@ -111,19 +111,7 @@ To successfully train our models to recognise MRI data, we selected $6$ differen
 ### Low Rank Adaptation (LoRA)
 
 LoRA (Low-Rank Adaptation) is a technique used to adapt large pre-trained models to downstream tasks without significantly increasing computational requirements [[13]](#ref13). LoRA reduces the training time and memory footprint of training large models by decomposing the updates of the model's weights into low-rank components.
-In this study, we use LoRA to adapt SegVol (initially trained on CT volumes) to directly improve its performance on MRI data. We aim to leverage the strengths of the pre-trained model while tailoring it to a different medical imaging modality.
-
-
-### Mixture of Adapters (MoA)
-
-Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mixture of Experts (MoE) approach [[14]](#ref13) that utilizes multiple lightweight adapter modules within a model to handle diverse tasks and modalities. Each adapter specializes in a specific task or modality, and the model dynamically selects and combines these adapters during inference. A special case of this is a *top-1* gated mixture, where we only select one adapter at a time, which, combined with existing parameter-efficient fine-tuning (PEFT) methods, has several benefits:
-
-- **Performance guarantees**: adapters can be designed in a way such that the base model's pre-trained weights are never changed, so recovering the original model's performance is equivalent to disabling the adapters during inference. To do this, we can introduce an "identity adapter" into our mixture.
-- **Running time benefits**: modern PEFT methods can be applied very efficiently, at almost no additional cost at inference time [[13]](#ref13). Top-1 pooling can also be done in constant time, depending on the selection method we use.
-
-In this work, mainly due to time limitation, we only implement a *top-1 gated* mixture of two experts, one for each modality we consider. For the gating metchanism, we make use of the modality information to select an adapter at inference time. Concretely, we assume an identity adapter for CT data, and train a LoRA adapter for MRI data. During inference, we enable exactly one of these adapters to compute predictions.
-
-As a result, through this simple trick, we get no theoretical decrease in performance over the CT domain (note that the unchanged pre-trained weights are used), while improving significantly over the MRI domain. Please refer to the [Experimental Setup](#experimental-setup) and [Results](#results) sections for more details.
+In this study, we use LoRA to adapt SegVol (initially trained on CT volumes) to directly improve its performance on MRI data by fine-tuning it on a mixture of CT and MRI volumes. An alternative approach, which due to time and computation constraints, we could not test is explained in the Appendix B.
 
 
 ### Context-prior learning
@@ -151,15 +139,13 @@ We apply the approach taken by Hermes to the pre-trained SegVol model, with slig
 
 ## Experimental Setup
 
-Earlier in this work, we briefly introduced the SegVol model, and proposed two different adaptation methods. In this and the results sections, we will discuss our approach to evaluating their performance and show our findings. Our experimental setup can be decomposed into four separte parts. 
+Earlier in this work, we briefly introduced the SegVol model, and proposed two different adaptation methods. In this and the results sections, we will discuss our approach to evaluating their performance and show our findings. Our experimental setup can be decomposed into three separte parts. 
 
 1. We conducted a series of experiments on the SegVol model, using its original weights. This way, on the one hand, we gained valuable insights into the inner workings of the SegVol model, and on the other hand obtained baseline results to which we could compare our adaptation methods.
 
-2. We fine-tuned the SegVol model using LoRA adapters [[13]](#ref13) on our selection of MRI data shown in [Table 1](#tab1). In our expectation, this method would adapt the model to the MRI domain out-perform the baseline in all our tests. On the other hand, we also expect its performance to decrease over the original (CT) domain of the base model, as is a common phenomenon in fine-tuning methods and also a known phenomenon when using Low-rank adaptation [[35]](#ref35).
+2. We fine-tuned the SegVol model using LoRA adapters [[13]](#ref13) on our selection of CT and MRI data shown in [Table 1](#tab1). In our expectation, this method would adapt the model to the MRI domain and out-perform the baseline in all our tests. On the other hand, we also expect its performance to decrease over the original (CT) domain of the base model, as is a common phenomenon in fine-tuning methods and also a known phenomenon when using Low-rank adaptation [[35]](#ref35).
 
-3. To overcome the performance drop of the LoRA-adapted model, we employ a binary gated mixture of adapters mechanism (discussed in [this section](#mixture_of_adapters_moa)) which effectively "disables" the weigths of the model, which were learned during fine-tuning to recover the baseline performance of the SegVol model. This way, we get high performance on both the CT and MRI domains, at almost no extra computational cost.
-
-4. We introduce Context-prior pooling to the SegVol model, as described in length in the [previous section](#context_prior_learning). We train it on a diverse set of both MRI and CT volumes (as listed in [Table 1][#tab1]).
+3. To overcome the performance drop of the LoRA-adapted model, we introduce Context-prior pooling to the SegVol model, as described in length in the [previous section](#context_prior_learning). We train it on a diverse set of both MRI and CT volumes (as listed in [Table 1][#tab1]).
 
 ### Evaluation metrics
 
@@ -395,7 +381,14 @@ Toward Universal Medical Image Segmentation.”
 <a name='ref35'>[35]</a>: Dan Biderman, Jose Gonzalez Ortiz, Jacob Portes, Mansheej Paul, Philip Greengard, Connor Jennings, Daniel King, Sam Havens, Vitaliy Chiley, Jonathan Frankle, Cody Blakeney, and John P. Cunningham. 2024. "LoRA Learns Less and Forgets Less." [arXiv:2405.09673](https://arxiv.org/abs/2405.09673)
 
 
-### Appendix: MRI leakage in M3D-Seg
+### Appendix A: MRI leakage in M3D-Seg
 
 The AMOS dataset is available at https://zenodo.org/records/7262581. The file `labeled_data_meta_0000_0599.csv` contains the imaging machines used to create the volumes. There are 500 volumes listed with a CT machine and 100 volumes with MRI machines. However, there is also a `dataset.json` which lists all 600 volumes as CT images. In real, the following are MRI volumes: `[541,542,559,563,564,565,566,568,573,576,578,597,543,544,545,546,548,549,551,552,555,558,560,561,562,567,571,572,574,575,580,583,599,550,554,569,585,586,592,594,598,547,553,556,557,577,584,587,589,591,593,595,570,579,581,582,588,590,596,513,505,510,511,512,514,515,516,517,501,518,519,522,523,524,525,526,503,527,528,504,530,532,533,534,535,536,502,500,520,538,506,539,507,508,537,509,521,531,529,540]`
 Having this inconsistency in the metadata files, the authors of the M3D-Seg dataset included in total 32 MRI volumes labelled as CT volumes in the training split, namely the following ones: `[554, 558, 589, 571, 595, 584, 517, 507, 530, 557, 587, 586, 538, 583, 585, 540, 597, 591, 580, 548, 593, 570, 518, 551, 514, 599, 596, 508, 588, 522, 541, 510]` and 7 MRI volumes in the test split, namely: `[532, 555, 592, 578, 590, 582, 594]`. Since the SegVol authors fine-tuned on M3D-Seg, the zero-shot performance on MRI modality cannot be strictly considered zero-shot. However, the effect of 32 samples in 96,000 is estimated to be minimal. Nevertheless, we notified the authors of AMOS and M3D-Seg about the mistake, to enhance the academic corectness of future works training on AMOS and M3D-Seg.
+
+### Appendix B: Mixture of Adapters (MoA)
+
+Mixture of Adapters (MoA) is an advanced adaptation technique inspired by the Mixture of Experts (MoE) approach [[14]](#ref13) that utilizes multiple lightweight adapter modules within a model to handle diverse tasks and modalities. Each adapter specializes in a specific task or modality, and the model dynamically selects and combines these adapters during inference. A special case of this is a *top-1* gated mixture, where we only select one adapter at a time, which, combined with existing parameter-efficient fine-tuning (PEFT) methods, has several benefits:
+
+- **Performance guarantees**: adapters can be designed in a way such that the base model's pre-trained weights are never changed, so recovering the original model's performance is equivalent to disabling the adapters during inference. To do this, we can introduce an "identity adapter" into our mixture.
+- **Running time benefits**: modern PEFT methods can be applied very efficiently, at almost no additional cost at inference time [[13]](#ref13). Top-1 pooling can also be done in constant time, depending on the selection method we use.
