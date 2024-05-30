@@ -1,0 +1,9 @@
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types text point --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types text bbox --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types text --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types point --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types bbox --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types text bbox --perturb_bbox 1 --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types text bbox --perturb_bbox 5 --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types text bbox --perturb_bbox 10 --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+--dataset_path /scratch-shared/scur0402_holdout/400 --modalities CT MRI --prompt_types text bbox --perturb_bbox 50 --model_name segvol_lora --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
