@@ -1,0 +1,55 @@
+{
+    "dice": 0.33075612783432007,
+    "per_dataset_modality_task_dice": {
+        "MSD_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.25438839197158813
+            }
+        },
+        "T2-weighted-MRI_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.5243107080459595
+            }
+        },
+        "promise12_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.2550360858440399
+            }
+        },
+        "SAML_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.26430439949035645
+            }
+        }
+    },
+    "per_dataset_modality_task_counts": {
+        "MSD_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 6
+            }
+        },
+        "T2-weighted-MRI_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 22
+            }
+        },
+        "promise12_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 30
+            }
+        },
+        "SAML_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 23
+            }
+        }
+    }
+}
