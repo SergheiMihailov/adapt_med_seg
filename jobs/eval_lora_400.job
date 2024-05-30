@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=SGLORA400
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --time=00:29:00
+#SBATCH --mem=62G
+#SBATCH --output=/home/scur0402/jobs/last_chance/Lora_400_eval_%A.out
+#SBATCH --error=/home/scur0402/jobs/last_chance/Lora_400_eval_%A.err
+
+date
+
+export HF_DATASETS_CACHE=/scratch-shared/zfulop/hf_cache_dir
+
+WORK_DIR=$HOME/zsombor/adapt_med_seg
+cd $WORK_DIR
+
+
+module purge
+module load 2023
+source $WORK_DIR/.venv/bin/activate
+
+
+python -m adapt_med_seg.eval \
+    --model_name "segvol_lora" \
+    --dataset_path /scratch-shared/scur0402/400/ \
+    --modalities CT MRI unknown \
+    --ckpt_path /scratch-shared/scur0402_models/LoRA_400/checkpoints/LoRA_400.ckpt
+    #--ckpt_path /home/zfulop/adapt_med_seg/logs/lightning_logs/version_0/checkpoints/epoch=0-step=1560.ckpt

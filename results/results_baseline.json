@@ -1,0 +1,107 @@
+{
+    "per_dataset_modality_task_dice": {
+        "0000 Dataset": {
+            "CT": {
+                "liver": 0.9618050456047058
+            }
+        },
+        "0001 Dataset": {
+            "CT": {
+                "OpticChiasm": 0.1755075752735138,
+                "Parotid_R": 0.7951778769493103,
+                "Lips": 0.6662173271179199,
+                "BuccalMucosa": 0.6360491514205933,
+                "Glnd_Lacrimal_R": 0.4904055595397949,
+                "Cricopharyngeus": 0.5694500803947449,
+                "Bone_Mandible": 0.9151379466056824,
+                "Esophagus_S": 0.6004030108451843,
+                "Eye_PR": 0.8163533806800842,
+                "Arytenoid": 0.132841095328331,
+                "Glnd_Lacrimal_L": 0.3634571433067322,
+                "OpticNrv_R": 0.3447383642196655,
+                "Cochlea_L": 0.2100144475698471,
+                "Eye_AR": 0.5127241611480713,
+                "Glnd_Submand_L": 0.7903439402580261,
+                "Glnd_Thyroid": 0.7892332077026367,
+                "Larynx_SG": 0.6949116587638855,
+                "Cavity_Oral": 0.8654983043670654,
+                "Cochlea_R": 0.26442086696624756,
+                "Glottis": 0.452264666557312,
+                "Parotid_L": 0.8029846549034119,
+                "SpinalCord": 0.7335789799690247,
+                "Brainstem": 0.7861984372138977,
+                "A_Carotid_R": 0.6437634229660034,
+                "Glnd_Submand_R": 0.7955659031867981,
+                "OpticNrv_L": 0.35605838894844055,
+                "A_Carotid_L": 0.5797488689422607,
+                "Eye_AL": 0.4782680869102478,
+                "Pituitary": 0.47114264965057373,
+                "Eye_PL": 0.7724411487579346
+            }
+        },
+        "0020 Dataset": {
+            "CT": {
+                "tumour": 0.6014699339866638,
+                "liver": 0.9539077281951904
+            }
+        },
+        "0008 Dataset": {
+            "CT": {
+                "pancreas": 0.8123207688331604
+            }
+        }
+    },
+    "per_dataset_modality_task_counts": {
+        "0000 Dataset": {
+            "CT": {
+                "liver": 4
+            }
+        },
+        "0001 Dataset": {
+            "CT": {
+                "OpticChiasm": 9,
+                "Parotid_R": 9,
+                "Lips": 9,
+                "BuccalMucosa": 9,
+                "Glnd_Lacrimal_R": 9,
+                "Cricopharyngeus": 9,
+                "Bone_Mandible": 9,
+                "Esophagus_S": 9,
+                "Eye_PR": 9,
+                "Arytenoid": 9,
+                "Glnd_Lacrimal_L": 9,
+                "OpticNrv_R": 9,
+                "Cochlea_L": 9,
+                "Eye_AR": 9,
+                "Glnd_Submand_L": 9,
+                "Glnd_Thyroid": 9,
+                "Larynx_SG": 9,
+                "Cavity_Oral": 9,
+                "Cochlea_R": 9,
+                "Glottis": 9,
+                "Parotid_L": 9,
+                "SpinalCord": 9,
+                "Brainstem": 9,
+                "A_Carotid_R": 9,
+                "Glnd_Submand_R": 9,
+                "OpticNrv_L": 9,
+                "A_Carotid_L": 9,
+                "Eye_AL": 9,
+                "Pituitary": 9,
+                "Eye_PL": 9
+            }
+        },
+        "0020 Dataset": {
+            "CT": {
+                "tumour": 27,
+                "liver": 27
+            }
+        },
+        "0008 Dataset": {
+            "CT": {
+                "pancreas": 17
+            }
+        }
+    },
+    "dice": 0.6295535446077153
+}
