@@ -228,9 +228,11 @@ Based on preliminary evaluation, we have reproduced SegVol performance on CT and
     <td colspan="2"><b>Figure 4.</b> Combined view of the results.</td>
   </tr>
 </table>
+
+
 ## Ablation studies
 
-As we mentioned in [earlier](#overview_of_segvol), at test time of SegVol, the bounding boxes were generated from the ground truth labels. As a result, we wanted to quantify the impact of small perturbations to the bounding boxes would ental on the overall performance of the model. Futhermore, Du et al. (2024) [[1]](#ref1) show ablation studies on different combinations of propmt types, namely text, point and bounding box promts. In our initial experiments, we observed some deviation from the reported results in the case of text-only prompts and prompts involving bounding boxes. Figure [[5]](#fig5) shows our results.
+As we mentioned in the [overview of SegVol](#overview_of_segvol), at test time, the bounding boxes were generated from the ground truth labels. As a result, we wanted to quantify the impact of small perturbations to the bounding boxes would ental on the overall performance of the model. Futhermore, Du et al. (2024) [[1]](#ref1) show ablation studies on different combinations of propmt types, namely text, point and bounding box promts. Most importantly, they show that bounding box prompts combined with textual information typically out-perform other combinations. In our initial experiments, we observed some deviation from test results in the case of text-only prompts and prompts involving bounding boxes. Figure [[5]](#fig5) shows our results.
 
 <table align="center">
   <tr align="center">
@@ -242,9 +244,10 @@ As we mentioned in [earlier](#overview_of_segvol), at test time of SegVol, the b
     </td>
   </tr>
   <tr align="left">
-    <td colspan="2"><b>Figure 5.</b> Performance of different models on different promtp types (left) and performance of the same models on different perturbations of the bounding boxes. All models were evaluated on a subset of our multi-modal training data, so the baseline performance is expected to be less than the fine-tuned models. Regardless, we can see that the fine-tuned models are more robust to different prompt types and also over bounding box perturbations.</td>
+    <td colspan="2"><b>Figure 5.</b> Performance of different models on different prompt types (left) and performance of the same models on different perturbations of the bounding boxes. All models were evaluated on a subset of our multi-modal training data, so the baseline performance is expected to be less than the fine-tuned models. Regardless, we can see that the fine-tuned models are more robust to different prompt types and also over bounding box perturbations.</td>
   </tr>
 </table>
+
 
 
 
