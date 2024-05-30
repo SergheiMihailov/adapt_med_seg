@@ -1,0 +1,203 @@
+{
+    "dice": 0.6470292806625366,
+    "per_dataset_modality_task_dice": {
+        "MSD_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.8553047180175781
+            },
+            "unknown": {}
+        },
+        "T2-weighted-MRI_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.8217492699623108
+            },
+            "unknown": {}
+        },
+        "promise12_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.7625367045402527
+            },
+            "unknown": {}
+        },
+        "SAML_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 0.6325618624687195
+            },
+            "unknown": {}
+        },
+        "brats_mr_42": {
+            "CT": {},
+            "MRI": {
+                "Enhancing Tumor": 0.3432408571243286,
+                "Edema": 0.002305475529283285,
+                "Non-Contrast-Enhancing Tumor Core": 0.024867046624422073
+            },
+            "unknown": {}
+        },
+        "amos_mrct_42": {
+            "CT": {},
+            "MRI": {
+                "right kidney": 0.9507242441177368,
+                "left kidney": 0.9431778192520142,
+                "pancreas": 0.7350851893424988,
+                "gall bladder": 0.49465298652648926,
+                "spleen": 0.9581919312477112,
+                "prostate/uterus": 0.0,
+                "right adrenal gland": 0.5596792697906494,
+                "arota": 0.8398512005805969,
+                "bladder": 0.0,
+                "left adrenal gland": 0.6183218955993652,
+                "duodenum": 0.5682967901229858,
+                "liver": 0.9595901966094971,
+                "stomach": 0.8174828290939331,
+                "postcava": 0.7637253999710083,
+                "esophagus": 0.5514619946479797
+            },
+            "unknown": {}
+        },
+        "0018 Dataset": {
+            "CT": {
+                "colon cancer": 0.5752038955688477
+            },
+            "MRI": {},
+            "unknown": {}
+        },
+        "chaos_mrct_42": {
+            "CT": {},
+            "MRI": {
+                "liver": 0.9133491516113281,
+                "right kidney": 0.8585098385810852,
+                "left kidney": 0.7999494671821594,
+                "spleen": 0.8932681679725647
+            },
+            "unknown": {}
+        },
+        "0020 Dataset": {
+            "CT": {
+                "liver": 0.9587931036949158,
+                "tumour": 0.4823664724826813
+            },
+            "MRI": {},
+            "unknown": {}
+        },
+        "0022 Dataset": {
+            "CT": {
+                "pancreas": 0.7723603844642639,
+                "tumour": 0.6534044146537781
+            },
+            "MRI": {},
+            "unknown": {}
+        },
+        "0023 Dataset": {
+            "CT": {
+                "spleen": 0.9628023505210876
+            },
+            "MRI": {},
+            "unknown": {}
+        }
+    },
+    "per_dataset_modality_task_counts": {
+        "MSD_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 4
+            },
+            "unknown": {}
+        },
+        "T2-weighted-MRI_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 4
+            },
+            "unknown": {}
+        },
+        "promise12_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 4
+            },
+            "unknown": {}
+        },
+        "SAML_mr_42": {
+            "CT": {},
+            "MRI": {
+                "prostate": 4
+            },
+            "unknown": {}
+        },
+        "brats_mr_42": {
+            "CT": {},
+            "MRI": {
+                "Enhancing Tumor": 4,
+                "Edema": 4,
+                "Non-Contrast-Enhancing Tumor Core": 4
+            },
+            "unknown": {}
+        },
+        "amos_mrct_42": {
+            "CT": {},
+            "MRI": {
+                "right kidney": 4,
+                "left kidney": 4,
+                "pancreas": 4,
+                "gall bladder": 4,
+                "spleen": 4,
+                "prostate/uterus": 4,
+                "right adrenal gland": 4,
+                "arota": 4,
+                "bladder": 4,
+                "left adrenal gland": 4,
+                "duodenum": 4,
+                "liver": 4,
+                "stomach": 4,
+                "postcava": 4,
+                "esophagus": 4
+            },
+            "unknown": {}
+        },
+        "0018 Dataset": {
+            "CT": {
+                "colon cancer": 4
+            },
+            "MRI": {},
+            "unknown": {}
+        },
+        "chaos_mrct_42": {
+            "CT": {},
+            "MRI": {
+                "liver": 3,
+                "right kidney": 3,
+                "left kidney": 3,
+                "spleen": 3
+            },
+            "unknown": {}
+        },
+        "0020 Dataset": {
+            "CT": {
+                "liver": 3,
+                "tumour": 3
+            },
+            "MRI": {},
+            "unknown": {}
+        },
+        "0022 Dataset": {
+            "CT": {
+                "pancreas": 3,
+                "tumour": 3
+            },
+            "MRI": {},
+            "unknown": {}
+        },
+        "0023 Dataset": {
+            "CT": {
+                "spleen": 3
+            },
+            "MRI": {},
+            "unknown": {}
+        }
+    }
+}
