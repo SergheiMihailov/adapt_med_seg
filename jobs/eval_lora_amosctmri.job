@@ -2,13 +2,13 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=SegVolContextP
+#SBATCH --job-name=SegVolCLora
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --time=00:29:00
 #SBATCH --mem=62G
-#SBATCH --output=/home/scur0402/jobs/logs/SegVol-context-prior_balanced_eval_%A.out
-#SBATCH --error=/home/scur0402/jobs/logs/SegVol-context-prior_balanced_eval_%A.err
+#SBATCH --output=/home/scur0402/jobs/logs/SegVol_lora_amosctmri_eval_%A.out
+#SBATCH --error=/home/scur0402/jobs/logs/SegVol_lora_amosctmri_eval_%A.err
 
 date
 
@@ -24,10 +24,10 @@ source $WORK_DIR/.venv/bin/activate
 
 
 python -m adapt_med_seg.eval \
-    --model_name "segvol_context_prior" \
+    --model_name "segvol_lora" \
     --dataset_path /scratch-shared/zfulop/CHAOS \
-    --modalities CT MRI \
-    --ckpt_path /home/scur0402/zsombor/adapt_med_seg/logs/lightning_logs/SegVol-context-prior-balanced_6426086/checkpoints/epoch=7-step=12720.ckpt
-    #--lora_r 16 \
-    #--lora_alpha 16 \
+    --modalities CT MRI unknown \
+    --ckpt_path /home/scur0402/zsombor/adapt_med_seg/logs/lightning_logs/SegVol-lora-amosctmri_6426243/checkpoints/epoch=0-step=4680.ckpt \
+    --lora_r 16 \
+    --lora_a 16 \
     #--ckpt_path /home/zfulop/adapt_med_seg/logs/lightning_logs/version_0/checkpoints/epoch=0-step=1560.ckpt

@@ -8,6 +8,7 @@ def process_ct_image(image_ndarray):
     clip the values to the 99.95th percentile of the foreground values,
     and standardize the values by the mean and std of the foreground.
     """
+    """
     ct_voxel_ndarray = image_ndarray.copy()
     ct_voxel_ndarray = ct_voxel_ndarray.flatten()
     # for all data
@@ -21,6 +22,7 @@ def process_ct_image(image_ndarray):
     ### transform ###
     image_ndarray = np.clip(image_ndarray, lower_bound, upper_bound)
     image_ndarray = (image_ndarray - mean) / max(std, 1e-8)
+    return image_ndarray"""
     return image_ndarray
 
 
@@ -30,4 +32,5 @@ def process_mr_image(image_ndarray):
     """
     # for now this is the same as the CT image
     # TODO: implement a more sophisticated preprocessing method
-    return process_ct_image(image_ndarray)
+    #return process_ct_image(image_ndarray)
+    return image_ndarray
